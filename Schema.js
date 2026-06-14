@@ -18,18 +18,23 @@ export class Schema {
     return this.indexOption;
 }
 
-    // add required to required array
-    addOneRequired(name) {
-        this.required.push(name);
+    // set required to required array
+    setRequired(name) {
+        if(!this.required.includes(name))
+            this.required.push(name)
     }
 
-    // adding one property  
-    addProperty(name, prop) {
+    // seting  property  
+    setProperty(name, prop) {
         this.properties[name] = prop;
 
     }
+    // geting  property by name 
+    getProperty(name=""){
+        return this.properties[name]
+    }
     // for indexed entry and option 
-    addIndexOption(indexKey, indexOpt) {
+    setIndexOption(indexKey, indexOpt) {
         this.indexOption.push({ key: indexKey, option: indexOpt });
     }
 
