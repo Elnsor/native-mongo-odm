@@ -1,5 +1,5 @@
 import { connectDb, getDb } from "../config/db.js";
-import { SchemaBuilder } from "../../SchemaBuilder.js";
+import { SchemaBuilder } from "../framework/SchemaBuilder.js";
 import { collectionManager } from "../framework/CollectionManager.js";
 
 

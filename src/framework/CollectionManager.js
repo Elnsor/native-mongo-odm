@@ -1,5 +1,5 @@
 import { Collection } from "mongodb";
-import { Schema } from "../../Schema.js";
+import { Schema } from "./Schema.js";
 import { getDb } from "../config/db.js";
 
 class CollectionManager{
