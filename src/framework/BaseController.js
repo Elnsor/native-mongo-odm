@@ -1,18 +1,43 @@
-import { ObjectId } from 'mongodb'
+import { Collection, ObjectId } from 'mongodb'
 import { collectionManager } from './CollectionManager.js';
 
 
+/**
+ * I update this to be accept to catch cellection name from reqest url
+ * so the collection can dynamicly geting and used better for concurrency
+ * or 
+ * u can add collection to it manually better for one collection at a time "for debug or testing"
+ */
+
 export class BaseController{
-    constructor(collectionName){
-        this.collectionName=collectionName;
+    /**
+     * 
+     * @param {String|null} fixedCollectionName 
+     */
+    constructor(fixedCollectionName=null){
+        this.collectionName=fixedCollectionName;
     }
 
-    getCollection(){
+    /**
+     * @param {req} 
+     * @returns {Collection}
+     * 
+     */
+    //-- update happen her to fetch collection name from req url
+    getCollection(req){
         
-        const coll=collectionManager.cache[this.collectionName];
-        if(!coll){
-            throw new Error(`No collection found by this collection name ${this.collectionName}`);
+
+        const name= this.collectionName || req.params.collectionName ;
+        
+        if (!name) {
+            throw new Error("Framework Error: No collection specified in constructor and no ':collectionName' found in URL path.");
         }
+        
+        const coll=collectionManager.cache[name];
+        if(!coll){
+            throw new Error(`Database Error: Collection '${name}' is not active in cache`);
+        }
+     
         return coll;
     }
 
@@ -21,7 +46,7 @@ export class BaseController{
         const doc=req.body
         
     try{
-    const collection=this.getCollection();
+    const collection=this.getCollection(req);
     const result= await collection.insertOne(doc);
 
     res.status(201).json({success:true , InsertedId: result.insertedId});
@@ -39,10 +64,14 @@ export class BaseController{
         
         
     try{
-    const collection=this.getCollection();
+    const collection=this.getCollection(req);
      const data= await collection.find({}).toArray();
+     const name=this.collectionName || req.params.collectionName
 
-    res.status(200).json({success:true ,message:`${data.length?`Document Found in ${this.collectionName}`:`No Document Found in ${this.collectionName}`}` ,count: data.length,data});
+    res.status(200).json(
+        {
+            success:true ,
+            message:`${data.length?`Document Found in ${name}`:`No Document Found in ${name}`}` ,count: data.length,data});
     }catch(error){
         res.status(500).json({success: false,message:"Server issue, Try again later ", details: error.message});
     }
@@ -52,10 +81,10 @@ export class BaseController{
 findById = async (req,res) => {
         
     try{
-    const collection=this.getCollection();
+    const collection=this.getCollection(req);
     const data = await collection.findOne({_id: new ObjectId(req.params.id)});
     if(!data){
-        return res.status(400).json({success: false,message: "no Document Found By Tis ID"})
+        return res.status(404).json({success: false,message: "no Document Found By This ID"})
     }
     return res.status(200).json({success:true ,data});
     }catch(error){
@@ -67,7 +96,7 @@ findById = async (req,res) => {
 remove = async (req,res)=>{
 
     try{
-     const collection= this.getCollection();
+     const collection= this.getCollection(req);
      const data= await collection.deleteOne({_id: new ObjectId(req.params.id)});
      //{ acknowledged: true, deletedCount: 0 }.
      if (data.deletedCount === 0 ){
@@ -81,7 +110,7 @@ remove = async (req,res)=>{
 
 update = async (req, res) => {
         try {
-            const collection = this.getCollection();
+            const collection = this.getCollection(req);
             const targetId = req.params.id;
 
             // Execute update using MongoDB atomic $set modifier operator
