@@ -4,6 +4,7 @@ import { initUserModule } from "./src/modules/User.js";
 import { connectDb } from "./src/config/db.js";
 import { indexRouter } from "./src/routes/index.routes.js";
 import { collectionManager } from "./src/framework/CollectionManager.js";
+import { globalErorrHnadler } from "./src/middleware/errorHandler.js";
 
 
 dotenv.config();
@@ -12,6 +13,8 @@ app.use(express.json());
 
 app.use("/",indexRouter);
 
+
+app.use(globalErorrHnadler);
 const PORT=3000
 
 async function bootstrap(){
