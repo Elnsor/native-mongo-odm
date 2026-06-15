@@ -1,5 +1,3 @@
-import { Collection } from "mongodb";
-import { Schema } from "./Schema.js";
 import { getDb } from "../config/db.js";
 
 class CollectionManager{
@@ -77,8 +75,9 @@ class CollectionManager{
                 this.current=null
             }
             return true;
-        } catch (error) {
+        } catch (err) {
             // Collection didn't exist, ignore error safely
+            console.error(`Drop collection Error ${err.message}`);
             return false;
         }
     }
@@ -135,7 +134,8 @@ class CollectionManager{
                 } 
             } catch (error) {
 
-                console.error("Error: Fetching Collection From Database Faild")
+                console.error("Error: Fetching Collection From Database Faild");
+                throw error;
 
             }
         

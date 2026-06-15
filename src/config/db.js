@@ -43,7 +43,7 @@ export async function connectDb(){
 
     }catch(error){
 
-        console.error(`database initialization Faild...`);
+        console.error(`database initialization Faild...${error.message}`);
         process.exit(1);
     }
 }
