@@ -4,7 +4,7 @@ import { collectionManager } from "../framework/CollectionManager.js";
 
 
 
-const userSchema = new SchemaBuilder()
+const userSchema = new SchemaBuilder({timestamp:true})
     .string(
         {
             name:"first_name",
@@ -24,7 +24,7 @@ const userSchema = new SchemaBuilder()
             name:"email",
             attrs: {
                 description:"your email address", 
-                pattern:"^.+@.+\\..+$",
+                pattern: "^[a-zA-Z][a-zA-Z_.0-9-]+@[a-zA-Z-.]+\\.[a-zA-Z]{2,}$",
             },
             config:{required:true}
         })
