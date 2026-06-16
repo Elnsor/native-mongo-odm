@@ -121,12 +121,21 @@ class SchemaValidationMananger {
             }
         };
 
-        // format the decoment field 
+        // // check for non exist field and format the decoment field 
         for (const field in newdoc) {
-            if (skipRequired.includes(field) || newdoc[field] === undefined || newdoc[field] === null) continue;
+            if (skipRequired.includes(field) || newdoc[field] === null) continue;
+
+                       
+            if (!schema.properties[field]) {
+                throw new AppError(`Validation Error: field ${field} not valid for collection ${collecionName}`, 400);
+            }
+
+            if (newdoc[field] === undefined){
+                throw new AppError(`Validation Error: undefined value in field ${field}  not valid for collection ${collecionName}`, 400);
+            }
 
             const expectedBsonType = schema.properties[field]?.bsonType;
-            const fieldShema = schema.properties[field];
+            const fieldSchema = schema.properties[field];
             const fromatter = this.formater[expectedBsonType];
 
             if (fromatter) {
@@ -139,8 +148,8 @@ class SchemaValidationMananger {
                 }
 
             }
-            if (fieldShema.pattern) {
-                const regx = new RegExp(fieldShema.pattern);
+            if (fieldSchema.pattern) {
+                const regx = new RegExp(fieldSchema.pattern);
                 if (!regx.test(newdoc[field])) {
                     throw new AppError(`Validation Error: Field ${field} in collection ${collecionName} not valid format`, 400);
                 }
@@ -152,13 +161,11 @@ class SchemaValidationMananger {
 
         // check for properties type 
         if (!update) {
-            for (const field in schema.properties) {
+            for (const field in schema.required) {
 
-                if (skipRequired.includes(field)) continue;
+                if (newdoc[field] === 0 || newdoc[field] ) continue;
 
-                if (schema.required[field] && (newdoc[field] === undefined || newdoc[field] == null || newdoc[field] === "")) {
                     throw new AppError(`Validation Error: required filed ${field} is (missing or empty) for collection ${collecionName}`, 400);
-                }
 
             }
 
@@ -168,7 +175,7 @@ class SchemaValidationMananger {
         } else {
             for (const field in newdoc) {
                 if (skipRequired.includes(field)) continue;
-                if (schema.required[field] && (newdoc[field] === "" || newdoc[field] === undefined || newdoc[field] === null)) {
+                if (schema.required[field] && (newdoc[field] === "" || newdoc[field] === null)) {
                     throw new AppError(`Validation Error: updated field '${field}' in collection '${collecionName}' cannot be empty`, 400);
                 }
             }//for
