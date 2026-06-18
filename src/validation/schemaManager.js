@@ -97,7 +97,7 @@ class SchemaValidationMananger {
     async validateDocument(collecionName, doc, option = {}) {
 
         const { skipRequired = ["_id", "createdAt", "updatedAt"], update = false } = option
-
+     
         let newdoc = typeof doc === 'string' ? JSON.parse(doc) : { ...doc };
         
          if (!newdoc ) {
@@ -113,13 +113,7 @@ class SchemaValidationMananger {
         if (Object.keys(schema.properties).length === 0) return newdoc;
 
 
-
-        // check for non exist field
-        for (const key in newdoc) {
-            if (!schema.properties[key]) {
-                throw new AppError(`Validation Error: field ${key} not valid for collection ${collecionName}`, 400);
-            }
-        };
+         console.log(schema.properties)
 
         // // check for non exist field and format the decoment field 
         for (const field in newdoc) {
@@ -163,7 +157,9 @@ class SchemaValidationMananger {
         if (!update) {
             for (const field in schema.required) {
 
-                if (newdoc[field] === 0 || newdoc[field] ) continue;
+                 if (skipRequired.includes(field)) continue;
+
+               if (newdoc[field] === 0 || newdoc[field] === false || newdoc[field]) continue;;
 
                     throw new AppError(`Validation Error: required filed ${field} is (missing or empty) for collection ${collecionName}`, 400);
 

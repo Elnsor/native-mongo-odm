@@ -1,6 +1,6 @@
 import express from  "express"
-import { userRouter } from "./userRouter.js"
 import apiRouter from "./api.routes.js";
+import { AppError } from "../framework/appError.js";
 
 const indexRout=express.Router();
 
@@ -9,6 +9,10 @@ indexRout.get("/",async (req,res)=>{
 })
 
 indexRout.use("/api",apiRouter);
-//indexRout.use("/users",userRouter);
 
+indexRout.all(/.*/,(req,res,next)=>{
+
+     next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
+
+})
 export {indexRout as indexRouter}
