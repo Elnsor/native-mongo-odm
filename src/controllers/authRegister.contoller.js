@@ -10,7 +10,12 @@ export const register = async(req,res,next) => {
 
 try{
 
-    const validatedBody = await schemManager.validateDocument("users",req.body,{ skipRequired : ["_id", "createdAt", "updatedAt","password","salt","role"], update : false } )
+    const validatedBody = await schemManager
+                     .validateDocument(
+                        'users',
+                        req.body,
+                        {"_id":true, "createdAt":true, "updatedAt":true,"salt":true},
+                        false);
 
     
     // password validate 
@@ -19,7 +24,7 @@ try{
             throw new AppError("Validation Error: A valid password is required to complete registration", 400);
         }
     // get collection 
-    const coll=collectionManager.getCollection('users');
+    const coll=collectionManager.getCollectionCache()['users'];
     if(!coll){
         throw new AppError("Loginsystem Error: No collection server issue try again later",500);
     }

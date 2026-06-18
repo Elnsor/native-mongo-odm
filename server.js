@@ -1,7 +1,7 @@
 import dotenv from "dotenv"
 import { initUserModule } from "./src/modules/User.js";
 import { connectDb, closeDb } from "./src/config/db.js";
-import { collectionManager } from "./src/framework/CollectionManager.js";
+
 import app from './app.js'
 
 
@@ -24,17 +24,19 @@ async function bootstrap(){
 }
 
 async function gracefulShutdown(){
-    console.log('\n🛑 SIGINT received (Ctrl+C) or SIGTERM . Starting graceful shutdown...');
+   
     
     try {
         // Close your database client pool 
-        await closeDb()
+        await closeDb();
+        
         console.log('🔌 Database connections disconnected safely.');
     } catch (dbErr) {
         console.error('Error during database disconnection:', dbErr);
     }
         console.log('👋 Server process terminated cleanly. Goodbye!');
         process.exit(0); // 0 means clean exit without errors
+         console.log('\n🛑 SIGINT received (Ctrl+C) or SIGTERM . Starting graceful shutdown...');
 }
 
 bootstrap();

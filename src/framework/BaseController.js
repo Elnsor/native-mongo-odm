@@ -26,7 +26,7 @@ export class BaseController{
      * 
      */
     //-- update happen her to fetch collection name from req url
-    getCollection(req){
+    getCollNameFromReq(req){
         
 
         const name= this.collectionName || req.params.collectionName ;
@@ -35,7 +35,7 @@ export class BaseController{
             throw new Error("Framework Error: No collection specified in constructor and no ':collectionName' found in URL path.");
         }
         
-        const coll=collectionManager.cache[name];
+        const coll=collectionManager.getCollectionCache()[name];
         if(!coll){
             throw new Error(`Database Error: Collection '${name}' is not active in cache`);
         }
@@ -49,7 +49,7 @@ export class BaseController{
     create = catchAsync(async (req,res,next) => {
         
     const doc=req.body
-    const collection=this.getCollection(req);
+    const collection=this.getCollNameFromReq(req);
     const result= await collection.insertOne(doc);
 
     res.status(201).json({success:true , InsertedId: result.insertedId});
@@ -58,7 +58,7 @@ export class BaseController{
 
     findAll = catchAsync( async (req,res,next) => {
     
-    const collection=this.getCollection(req);
+    const collection=this.getCollNameFromReq(req);
      const data= await collection.find({}).toArray();
      const name=this.collectionName || req.params.collectionName
 
@@ -71,7 +71,7 @@ export class BaseController{
 findById = catchAsync(async (req,res,next) => {
         
    
-    const collection=this.getCollection(req);
+    const collection=this.getCollNameFromReq(req);
     
     if(!ObjectId.isValid(req.params.id)){
         return next(new AppError("input must be a 24 character hex string, 12 byte Uint8Array, or an integer",400));
@@ -87,7 +87,7 @@ findById = catchAsync(async (req,res,next) => {
 
 remove = catchAsync( async (req,res,next)=>{
 
-     const collection= this.getCollection(req);
+     const collection= this.getCollNameFromReq(req);
 
       if(!ObjectId.isValid(req.params.id)){
         return next(new AppError("input must be a 24 character hex string, 12 byte Uint8Array, or an integer",400));
@@ -101,7 +101,7 @@ remove = catchAsync( async (req,res,next)=>{
 })
 
 update = catchAsync( async (req, res,next) => {
-            const collection = this.getCollection(req);
+            const collection = this.getCollNameFromReq(req);
             const targetId = req.params.id;
 
         if(!ObjectId.isValid(targetId)){

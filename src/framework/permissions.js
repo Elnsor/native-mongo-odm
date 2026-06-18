@@ -3,10 +3,12 @@
 export const collectionRole={
     users:{
         read:["admin","manager"],
-        write:["admin"],
+        write:[],
+        update:["admin"]
     },
     product:{
         read:["admin","manager","user"],
-        write:["admin","manager"]
+        write:["admin","manager"],
+        update:["admin","manager"]
     },
 }
