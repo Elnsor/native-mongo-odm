@@ -18,8 +18,9 @@ const client = new MongoClient(uri, {
 
 let db=null;
 let isConnected=null;
+let connectionPromise=null;
 
-client.on("connectionCreated",()=>{
+client.on("connectionPoolReady",()=>{
     isConnected=true;
 })
 
@@ -29,10 +30,12 @@ client.on("connectionClosed",()=>{
 
 export async function connectDb(){
 
-    if (isConnected && db){
-        return db;
-    }
+    if (db) return db;
 
+    if(connectionPromise) return connectionPromise;
+ 
+    connectionPromise = ( async () => {
+ 
     try{
         await client.connect();
         db=client.db(dbName);
@@ -44,12 +47,15 @@ export async function connectDb(){
     }catch(error){
 
         console.error(`database initialization Faild...${error.message}`);
+        connectionPromise=null;
         process.exit(1);
     }
+    } )();
+    return connectionPromise;
 }
 
 export function getDb(){
-    if(isConnected){
+    if(isConnected && db){
         return db;
     }
     throw new Error("Database not connected yet (initialize it)!!")
