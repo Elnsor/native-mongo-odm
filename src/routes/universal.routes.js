@@ -11,7 +11,7 @@ const universalController=new BaseController();
 
 universalRouter.get("/",tokenauth       ,authorizeCheck('read'),universalController.findAll);
 universalRouter.get("/:id",tokenauth    ,authorizeCheck('read'),universalController.findById);
-universalRouter.post("/:id",tokenauth      ,authorizeCheck('write'),validator,universalController.create);
+universalRouter.post("/",tokenauth      ,authorizeCheck('write'),validator,universalController.create);
 universalRouter.put("/:id",tokenauth    ,authorizeCheck('update'),validator,universalController.update);
 universalRouter.delete("/:id",tokenauth ,authorizeCheck('delete'),universalController.remove);
 
