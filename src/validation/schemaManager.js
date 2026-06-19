@@ -33,7 +33,7 @@ class SchemaValidationMananger {
         }
 
         const items = await coll.options();
-        console.log(items);
+       
 
 
         if (!items?.validator?.$jsonSchema) {

@@ -34,9 +34,10 @@ async function gracefulShutdown(){
     } catch (dbErr) {
         console.error('Error during database disconnection:', dbErr);
     }
+        console.log('\n🛑 SIGINT received (Ctrl+C) or SIGTERM . Starting graceful shutdown...');
         console.log('👋 Server process terminated cleanly. Goodbye!');
         process.exit(0); // 0 means clean exit without errors
-         console.log('\n🛑 SIGINT received (Ctrl+C) or SIGTERM . Starting graceful shutdown...');
+         
 }
 
 bootstrap();

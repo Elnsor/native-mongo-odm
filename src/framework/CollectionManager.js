@@ -1,3 +1,4 @@
+import { Collection } from "mongodb";
 import { getDb } from "../config/db.js";
 
 class CollectionManager{
@@ -6,11 +7,14 @@ class CollectionManager{
         this.current=null;
     }
 /**
- * 
+ * if collection with same name exist in dbserver return its CollectionObject without any new creation \
+ * if not exist in dbserver its create new one and retrun its CollectionObject
+ * in both it put CollectionObject in Cache
+ * if its faild => error 
  * @param {String} collectionName -- new collection name 
  * @param {Schema} SchemaValidatorObject -- Schema Object
  * @param {boolean} update -- if update = true then it allow to update exist collection with same name 
- * @returns {Promis<Collection>}
+ * @returns {Promis<Collection|Error>}
  */
     async createCollection(collectionName,SchemaValidatorObject,update=false){
        
@@ -86,7 +90,7 @@ class CollectionManager{
     
 
     /**
-     * 
+     *
      * @param {String} collecionName 
      * select the collection by collection name and make it current collection if not current not modified
      * @returns {Promise<Collection|null>} 
@@ -110,9 +114,11 @@ class CollectionManager{
     }
 
      /**
-      * 
+      * try to get CollectionObject By name from cache and return it , if not found \
+      * try to get from dbserver return it and put it in cache , not found
+      * return null 
       * @param {String} collectionName 
-      * @returns {Promise<collecionName|null>}
+      * @returns {Promise<Collection|null>}
       */ 
     async getCollection(collectionName) {
 

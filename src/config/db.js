@@ -24,9 +24,6 @@ client.on("connectionPoolReady",()=>{
     isConnected=true;
 })
 
-client.on("connectionClosed",()=>{
-    isConnected=null;
-})
 
 export async function connectDb(){
 
@@ -63,6 +60,9 @@ export function getDb(){
 
 export async function closeDb(){
     await client.close();
+    this.isConnected=null;
+    this.db=null;
+    this.connectionPromise=null;
   
   console.log("connection to DB closed");
 }

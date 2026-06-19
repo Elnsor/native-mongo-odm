@@ -9,12 +9,12 @@ export const login = async (req, res, next) => {
 
     //user send me password and email check it 
     try {
-        if(!req.body || !( req.body.email && req.body.password)){
-              throw new AppError("Validation Error:Please Provide both Email and Password!!", 400);
+        if (!req.body || !(req.body.email && req.body.password)) {
+            throw new AppError("Validation Error:Please Provide both Email and Password!!", 400);
         }
         const { email, password } = req.body
 
-      
+
         // get user for collection users check it 
         const coll = collectionManager.getCollectionCache()["users"];
 
@@ -33,7 +33,7 @@ export const login = async (req, res, next) => {
             throw new AppError("Authentication Faild:#️⃣Invalid Email or Password", 401);
         }
         // generate new token 
-        console.log(process.env.SECRET_KEY);
+        
         const token = signTokenFromScratch({ id: newUser._id, role: newUser.role }, process.env.SECRET_KEY, 24);
         //send this token to user
         res.status(200).json({
