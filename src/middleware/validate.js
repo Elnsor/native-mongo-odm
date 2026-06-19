@@ -14,7 +14,7 @@ const validationCollection= catchAsync(async (req,res,next)=>{
                      .validateDocument(
                         collecionName,
                         req.body,
-                        {"_id":true, "createdAt":true, "updatedAt":true,"passowrd":true,"salt":true},
+                        {"_id":true, "createdAt":true, "updatedAt":true,"salt":true},
                         isUpdate);
 next();
 });

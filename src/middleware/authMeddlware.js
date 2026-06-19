@@ -30,7 +30,7 @@ try{
 
   };
 
-  const userCollection=await collectionManager.getCollection(req.params.collectionName);
+  const userCollection=await collectionManager.getCollection(`users`);
 
   if(!userCollection){
     throw new AppError("Authentication System Error: users Collection is inactive state",500);
