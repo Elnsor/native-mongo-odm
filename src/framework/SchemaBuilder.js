@@ -121,20 +121,12 @@ number({
 index(keyObject,optionsObject ={}){
 
      if (keyObject && keyObject?.constructor.name === 'Object') {
-            const keys=Object.keys(keyObject)
-            
-            for(const key of keys ){
-                if(!this.getProperties()[key]) 
-                  throw new Error(`XX Schema Compilation Error: Cannot create an index on "${key}" because it does not exist in your schema definition!`)
-
-            }
-    this.setIndexOption(keyObject,optionsObject)
-    return this;
-}
-
-    
+              this.setIndexOption(keyObject,optionsObject)
     
 }
+return this;
+}
+
 }
 
 

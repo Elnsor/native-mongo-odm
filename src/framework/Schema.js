@@ -40,6 +40,35 @@ export class Schema {
 
     // Compiles schema properties into a MongoDB $jsonSchema configuration
     compileValidator() {
+        
+        // i can add new feature her like add dynamic timestap like createdAt or updatedAt or any dynamic field
+
+        for (const userIndex of this.getIndex()) {
+        const indexKeys = Object.keys(userIndex.key);
+        for (const key of indexKeys) {
+            if (!this.properties[key]) {
+                throw new Error(`XX Schema Compilation Error: Cannot create an index on "${key}" because it does not exist in definitions!`);
+            }
+        }
+    }
+        
+// validator: {
+//         // i can combine our standard JSON schema with expression rules using $and
+//         $and: [
+//             // 1. standard schema validator (Approach 1)
+//             { $jsonSchema: { bsonType: "object", properties: { ... } } },
+
+//             // 2.  and some restriction check for field doing by mongodbserver 
+//             {
+//                 $expr: {
+//                     // Rule: "createdAt" must be less than or equal to ($lte) "updatedAt"
+//                     $lte: [ "$createdAt", "$updatedAt" ]
+//                 }
+//             }
+//         ]
+//     }
+// };
+
         return {
             validator: {
                 $jsonSchema: {
