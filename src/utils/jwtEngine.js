@@ -106,8 +106,13 @@ export const verifyTokenFromScratch= (token,secret) =>{
         const incomingBuffer=Buffer.from(incomingSignature);
         const servergBuffer=Buffer.from(serverSignature);
 
-        if(incomingBuffer.length !== servergBuffer.length || !crypto.timingSafeEqual(incomingBuffer,servergBuffer)){
-            throw new Error("Crypto Signature: missmatch Token,token has been Altered.");
+        if(incomingBuffer.length !== servergBuffer.length ){
+            throw new Error("Crypto Signature: mismatch Token,(layout size ) token has been Altered.");
+
+        }
+
+        if(!crypto.timingSafeEqual(incomingBuffer,servergBuffer)){
+            throw new Error("Crypto Signature: mismatch Token,token has been Altered.");
           }
 
           const payload=fromBase64Url(encodedPayload);
