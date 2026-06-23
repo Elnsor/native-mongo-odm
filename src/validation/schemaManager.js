@@ -299,4 +299,4 @@ _proccessAndValidateValue(collectionName, fieldName, value, fieldSchema) {
 }
 
 
-export const schemManager = new SchemaValidationMananger();
+export const schemaManager = new SchemaValidationMananger();

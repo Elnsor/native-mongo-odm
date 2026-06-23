@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "node --watch server.js",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand"
+    "test": "node --test --experimental-test-module-mocks src/tests/*.native.test.js"
   },
   "keywords": [],
   "author": "",

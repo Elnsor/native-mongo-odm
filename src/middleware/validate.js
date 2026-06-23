@@ -1,4 +1,4 @@
-import { schemManager } from "../validation/schemaManager.js";
+import { schemaManager } from "../validation/schemaManager.js";
 import { catchAsync } from "../utils/catchAsync.js";
 
 /**
@@ -10,7 +10,7 @@ const validationCollection= catchAsync(async (req,res,next)=>{
 
     const isUpdate = req.method === 'PUT' || req.method === `PATCH`;
 
-    req.body = await schemManager
+    req.body = await schemaManager
                      .validateDocument(
                         collecionName,
                         req.body,
