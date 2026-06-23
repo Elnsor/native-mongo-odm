@@ -1,5 +1,5 @@
 import { hashPassworNative } from "../utils/helperhash.js";
-import { schemManager } from "../validation/schemaManager.js";
+import { schemaManager } from "../validation/schemaManager.js";
 import { AppError } from "../framework/appError.js";
 import { signTokenFromScratch } from "../utils/jwtEngine.js";
 import { collectionManager } from "../framework/CollectionManager.js";
@@ -10,7 +10,7 @@ export const register = async (req, res, next) => {
 
     try {
 
-        const validatedBody = await schemManager
+        const validatedBody = await schemaManager
             .validateDocument(
                 'users',
                 req.body,
