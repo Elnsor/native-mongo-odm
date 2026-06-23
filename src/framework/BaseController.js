@@ -94,7 +94,7 @@ remove = catchAsync( async (req,res,next)=>{
     }
      const data= await collection.deleteOne({_id: new ObjectId(req.params.id)});
      if (data.deletedCount === 0 ){
-        return next(new AppError("No record found for delete",400))
+        return next(new AppError("No record found for delete",404))
 
      }
      return res.status(200).json({success: true,message:"Document Remove Cleanly",record:data});
