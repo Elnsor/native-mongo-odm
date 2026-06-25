@@ -1,0 +1,55 @@
+name: Unit Test Tag v1.0.0-baseline
+on:
+    workflow_dispatch:
+      
+permissions:
+  checks: write
+  pull-requests: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get Code 
+        uses: actions/checkout@v7
+      - name: Install Node 24 
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm 
+      - name: Install Dependencies 
+        run: npm ci 
+      - name: Test Authentication Middleware
+        run: node --test --experimental-test-module-mocks --test-reporter=junit --test-reporter-destination=auth-report.xml src/tests/authMiddelware.native.test.js
+        continue-on-error: true
+  
+      - name: Test Database & Collection Manager
+        run: node --test --experimental-test-module-mocks --test-reporter=junit --test-reporter-destination=collection-report.xml src/tests/collectionManager.native.test.js
+        continue-on-error: true
+  
+      - name: Test Schema Validation Engine
+        run: node --test --experimental-test-module-mocks --test-reporter=junit --test-reporter-destination=schema-report.xml src/tests/ValidationSchemaManger.native.test.js
+        continue-on-error: true
+
+      - name: Test Validation Middleware 
+        run: node --test --experimental-test-module-mocks --test-reporter=junit --test-reporter-destination=schema-report.xml src/tests/ValidationMiddleware.native.test.js
+        continue-on-error: true
+  
+      - name: Test CRUD Base Controller 
+        run: node --test --experimental-test-module-mocks --test-reporter=junit --test-reporter-destination=controller-report.xml src/tests/BaseController.native-1.test.js 
+        continue-on-error: true
+      - name: Test Login Layer 
+        run: node --test --experimental-test-module-mocks --test-reporter=junit --test-reporter-destination=controller-report.xml src/tests/authlogin.controller.native.test.js 
+        continue-on-error: true
+      - name: Test Regiteration Layer 
+        run: node --test --experimental-test-module-mocks --test-reporter=junit --test-reporter-destination=controller-report.xml src/tests/authregister.native.test.js 
+        continue-on-error: true
+  
+      
+      - name: Publish Integrated Test Results Dashboard
+        uses: mikepenz/action-junit-report@v4
+        if: always()
+        with:
+          report_paths: '*-report.xml'
+          detailed_summary: true
+          include_passed: true
+    
