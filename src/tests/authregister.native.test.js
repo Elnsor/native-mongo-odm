@@ -6,6 +6,9 @@ import {  hashPassworNative as originalHash } from '../utils/helperhash.js';
 import { collectionManager } from '../framework/CollectionManager.js';
 import { ObjectId } from 'mongodb/lib/bson.js';
 import { schemaManager } from '../validation/schemaManager.js';
+import dotenv from 'dotenv'
+
+dotenv.config();
 
 
 
@@ -25,7 +28,7 @@ mock.module('../utils/helperhash.js',{
 });
 
  const {register} = await import('../controllers/authRegister.contoller.js');
-describe("Login Test",async ()=>{
+describe("Register System Test",async ()=>{
     let res,req,next;
     let collobj;
     let newUser;
@@ -75,6 +78,8 @@ describe("Login Test",async ()=>{
     describe("Unit Test:Register New user ",()=>{
             describe("Gevin:Valid user Document",()=>{
                 test("should operation done without error ", async ()=>{
+
+                    signToken.mock.mockImplementationOnce(()=> "1235-1332-1132-11224");
     
                 await register(req,res,next);
     
