@@ -46,7 +46,9 @@ function buildUri() {
 
 
 
+
 const uri = buildUri();
+console.log(uri);
 
 // create client 
 const client = new MongoClient(uri, {

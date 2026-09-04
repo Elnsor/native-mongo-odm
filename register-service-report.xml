@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites>
+	<testsuite name="authRegister Controller" time="0.009970" disabled="0" errors="0" tests="5" failures="0" skipped="0" hostname="DESKTOP-88BFBKD">
+		<testcase name="should successfully register a new user and return 201 with data and token" time="0.003784" classname="test" file="C:\Users\elkas\OneDrive\Desktop\git\custom-odm-app\src\tests\authUserServiceRegister.native.test.js"/>
+		<testcase name="should throw AppError (400) if req.body is missing entirely" time="0.001115" classname="test" file="C:\Users\elkas\OneDrive\Desktop\git\custom-odm-app\src\tests\authUserServiceRegister.native.test.js"/>
+		<testcase name="should throw AppError (400) if accountInfo is missing" time="0.001086" classname="test" file="C:\Users\elkas\OneDrive\Desktop\git\custom-odm-app\src\tests\authUserServiceRegister.native.test.js"/>
+		<testcase name="should throw AppError (400) if password is missing inside accountInfo" time="0.000655" classname="test" file="C:\Users\elkas\OneDrive\Desktop\git\custom-odm-app\src\tests\authUserServiceRegister.native.test.js"/>
+		<testcase name="should pass AppError to next if userService.registerUser fails (e.g., email exists)" time="0.000807" classname="test" file="C:\Users\elkas\OneDrive\Desktop\git\custom-odm-app\src\tests\authUserServiceRegister.native.test.js"/>
+	</testsuite>
+	<!-- tests 5 -->
+	<!-- suites 1 -->
+	<!-- pass 5 -->
+	<!-- fail 0 -->
+	<!-- cancelled 0 -->
+	<!-- skipped 0 -->
+	<!-- todo 0 -->
+	<!-- duration_ms 1122.7439 -->
+</testsuites>
