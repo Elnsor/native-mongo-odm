@@ -7,7 +7,7 @@ permissions:
   pull-requests: write
 jobs:
   test:
-    runs-on: [ ubuntu-22.04, ubuntu-latest]
+    runs-on: ubuntu-latest
     steps:
       - name: Get Code 
         uses: actions/cache@v4
