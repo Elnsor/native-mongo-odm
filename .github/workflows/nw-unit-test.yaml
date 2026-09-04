@@ -1,0 +1,76 @@
+name: New Unit Test 
+on:
+  workflow_dispatch
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        test:
+            - { name: "Auth Middleware", file: "authMiddelware.native.test.js", report: "auth-report.xml" }
+            - { name: "Collection Manager", file: "collectionManager.native.test.js", report: "collection-report.xml" }
+            - { name: "Schema Validation", file: "ValidationSchemaManger.native.test.js", report: "schema-validation-report.xml" }
+            - { name: "Validation Middleware", file: "ValidationMiddleware.native.test.js", report: "validation-middleware-report.xml" }
+            - { name: "User Service App", file: "userService.native.test.js", report: "user-service-app-report.xml" }
+            - { name: "Login Controller", file: "authlogin.controller.native.test.js", report: "login-controller-report.xml" }
+            - { name: "Login Service", file: "authUserServiceLogin.native.test.js", report: "login-service-report.xml" }
+            - { name: "Register Controller", file: "authregister.native.test.js", report: "register-controller-report.xml" }
+            - { name: "Register Service", file: "authUserServiceRegister.native.test.js", report: "register-service-report.xml" }
+            - { name: "Register Applicatoin Schema", file: "applicationRegistry.native.test.js", report: "register-application-schema-report.xml" }
+            - { name: "Base Controller App", file: "baseController.native.test.js", report: "base-controller-report.xml" }
+            - { name: "Projection Engine ", file: "projection.native.test.js", report: "projection-engine-report.xml" }
+            - { name: "Security Role Engine ", file: "securityRoleEngin.native.test.js", report: "security-role-engine-report.xml" }
+            - { name: "Schema Builder Object ", file: "schemaBuilder.native.test.js", report: "schema-builder-object-report.xml" }
+
+    name: Test - ${{ matrix.test.name }}
+    steps:
+      - name: Get Code 
+        uses: actions/checkout@v4
+
+      - name: Setup Node 24 
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci 
+      - name: Run ${{ matrix.test.name }} Tests
+        run: |
+          node --test \
+            --experimental-test-module-mocks \
+            --test-reporter=junit \
+            --test-reporter-destination=${{ matrix.test.report }} \
+            src/tests/${{ matrix.test.file }}
+      - name: Upload Test Result 
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-result-${{ matrix.test.name }}
+          path: ${{ matrix.test.report }}
+          retention-days: '7'
+  publish-report:
+    name: Publish Test Dashboard
+    needs: test 
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifact Reporters 
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-result-*
+          merge-multipe: true
+
+      - name: Publish Integrated Test Results Dashboard
+        uses: mikepenz/action-junit-report@v4
+        with:
+          report_paths: '*.xml'
+          detailed_summary: true
+          include_passed: true
+          check_name: "Test Results Summary"
+
+
+
+        
+
+      
