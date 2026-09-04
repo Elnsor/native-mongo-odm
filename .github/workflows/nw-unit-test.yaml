@@ -48,8 +48,9 @@ jobs:
         run: |
           node --test \
             --experimental-test-module-mocks \
-            --test-reporter=junit \
+            --test-reporter=spec \
             --test-reporter-destination=stdout \
+            --test-reporter=junit \
             --test-reporter-destination=${{ matrix.test.report }} \
             src/tests/${{ matrix.test.file }}
       - name: Upload Test Result 
