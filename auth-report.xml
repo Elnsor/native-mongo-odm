@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites>
+	<testsuite name="Unit Test: tokenauth Middleware Security Layer" time="0.004865" disabled="0" errors="0" tests="2" failures="0" skipped="0" hostname="DESKTOP-88BFBKD">
+		<testsuite name="Successfuly Authentication " time="0.002091" disabled="0" errors="0" tests="1" failures="0" skipped="0" hostname="DESKTOP-88BFBKD">
+			<testcase name="should authenticate valid token and attach user to req" time="0.001427" classname="test" file="C:\Users\elkas\OneDrive\Desktop\git\custom-odm-app\src\tests\authMiddelware.native.test.js"/>
+		</testsuite>
+		<testsuite name="Edge Cases : Authentication Failure" time="0.002278" disabled="0" errors="0" tests="4" failures="0" skipped="0" hostname="DESKTOP-88BFBKD">
+			<testcase name="should halt pipeline with 401 AppError if Authorization header is missing" time="0.000541" classname="test" file="C:\Users\elkas\OneDrive\Desktop\git\custom-odm-app\src\tests\authMiddelware.native.test.js"/>
+			<testcase name="should fail with status code 401 if the JWT token is expired Or Corrupted" time="0.000489" classname="test" file="C:\Users\elkas\OneDrive\Desktop\git\custom-odm-app\src\tests\authMiddelware.native.test.js"/>
+			<testcase name="should fail with status code 401 if the token is valid but the user no longer exists in DB" time="0.000445" classname="test" file="C:\Users\elkas\OneDrive\Desktop\git\custom-odm-app\src\tests\authMiddelware.native.test.js"/>
+			<testcase name="should forward error to next() if Db Failed during findOne inquiry" time="0.000540" classname="test" file="C:\Users\elkas\OneDrive\Desktop\git\custom-odm-app\src\tests\authMiddelware.native.test.js"/>
+		</testsuite>
+	</testsuite>
+	<!-- tests 5 -->
+	<!-- suites 3 -->
+	<!-- pass 5 -->
+	<!-- fail 0 -->
+	<!-- cancelled 0 -->
+	<!-- skipped 0 -->
+	<!-- todo 0 -->
+	<!-- duration_ms 267.1551 -->
+</testsuites>
