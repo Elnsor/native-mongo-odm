@@ -48,7 +48,13 @@ function buildUri() {
 
 
 const uri = buildUri();
-console.log(uri);
+
+console.log("DEBUG ENV:", {
+  MONGODB_URI: MONGODB_URI === "" ? "(EMPTY STRING)" : MONGODB_URI,
+  MONGODB_PROTOC: MONGODB_PROTOC,
+  HAS_USERNAME: !!MONGODB_USERNAME
+});
+console.log("DEBUG ENV:", uri);
 
 // create client 
 const client = new MongoClient(uri, {
