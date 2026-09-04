@@ -19,8 +19,8 @@ jobs:
         test:
             - { name: "Auth Middleware", file: "authMiddelware.native.test.js", report: "auth-report.xml" }
             - { name: "Collection Manager", file: "collectionManager.native.test.js", report: "collection-report.xml" }
-            - { name: "Schema Validation", file: "ValidationSchemaManger.native.test.js", report: "schema-validation-report.xml" }
-            - { name: "Validation Middleware", file: "ValidationMiddleware.native.test.js", report: "validation-middleware-report.xml" }
+            - { name: "Schema Validation", file: "validationSchemaManger.native.test.js", report: "schema-validation-report.xml" }
+            - { name: "Validation Middleware", file: "validationMiddleware.native.test.js", report: "validation-middleware-report.xml" }
             - { name: "User Service App", file: "userService.native.test.js", report: "user-service-app-report.xml" }
             - { name: "Login Controller", file: "authlogin.controller.native.test.js", report: "login-controller-report.xml" }
             - { name: "Login Service", file: "authUserServiceLogin.native.test.js", report: "login-service-report.xml" }

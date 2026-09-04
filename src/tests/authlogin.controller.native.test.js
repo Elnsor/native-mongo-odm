@@ -166,7 +166,7 @@ describe("Login Test",async ()=>{
 
             assert.equal(next.mock.calls.length,1);
             assert.equal(next.mock.calls[0].arguments[0].statusCode,401);
-            assert.match(next.mock.calls[0].arguments[0].message,/#️⃣Invalid Email or Password/i);
+            assert.match(next.mock.calls[0].arguments[0].message,/Authentication Faild: Invalid Email or Password/i);
         });//test 
         });//child desc
 
