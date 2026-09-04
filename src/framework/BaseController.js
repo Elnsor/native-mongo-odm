@@ -2,6 +2,7 @@ import { ObjectId } from 'mongodb'
 import { collectionManager } from './CollectionManager.js';
 import { AppError } from './appError.js';
 import { catchAsync } from '../utils/catchAsync.js';
+import { frameworkConfig } from '../config/frameworkConfig.js';
 
 
 /**
@@ -48,18 +49,38 @@ export class BaseController{
  */
     create = catchAsync(async (req,res,next) => {
         
-    const doc=req.body
+    
     const collection=this.getCollNameFromReq(req);
+
+    // for OCC
+    const doc={...req.body,...(frameworkConfig.schemaDefaults.optimisticConcurrencyControl && {version:1})
+
+    }
     const result= await collection.insertOne(doc);
 
     res.status(201).json({success:true , InsertedId: result.insertedId});
     })
+
+
     
 
     findAll = catchAsync( async (req,res,next) => {
+
+
     
     const collection=this.getCollNameFromReq(req);
-     const data= await collection.find({}).toArray();
+
+    if(!ObjectId.isValid(req.params.id)){
+        return next(new AppError("input must be a 24 character hex string, 12 byte Uint8Array, or an integer",400));
+    }
+    const queryFilterd= {};
+
+        if(frameworkConfig.schemaDefaults.softDocumentDetele){
+            queryFilterd.deteledAt={$exists: false};
+        }
+
+
+     const data= await collection.find(queryFilterd,{projection: req.projection}).toArray();
      const name=this.collectionName || req.params.collectionName
 
     res.status(200).json(
@@ -76,7 +97,14 @@ findById = catchAsync(async (req,res,next) => {
     if(!ObjectId.isValid(req.params.id)){
         return next(new AppError("input must be a 24 character hex string, 12 byte Uint8Array, or an integer",400));
     }
-    const data = await collection.findOne({_id: new ObjectId(req.params.id)});
+    const queryFilterd= {_id: new ObjectId(req.params.id)};
+
+        if(frameworkConfig.schemaDefaults.softDocumentDetele){
+            queryFilterd.deteledAt={$exists: false};
+        }
+
+
+    const data = await collection.findOne( queryFilterd,{projection: req.projection} );
     if(!data){
         return next(new AppError( "no Document Found By This ID",404));
     }
@@ -92,25 +120,74 @@ remove = catchAsync( async (req,res,next)=>{
       if(!ObjectId.isValid(req.params.id)){
         return next(new AppError("input must be a 24 character hex string, 12 byte Uint8Array, or an integer",400));
     }
-     const data= await collection.deleteOne({_id: new ObjectId(req.params.id)});
-     if (data.deletedCount === 0 ){
+    const setOperation={}
+    let result;
+    const softdelete=frameworkConfig.schemaDefaults.softDocumentDetele;
+
+    if(softdelete){
+
+        setOperation.$set={deletedAt: new Date()};
+        if(frameworkConfig.schemaDefaults.optimisticConcurrencyControl){
+            setOperation.$inc={version:1};
+        }
+
+        result= await collection.updateOne(
+            {
+                _id: new ObjectId(req.params.id),
+                deletedAt:{$exists : false}},
+            setOperation
+        )
+
+    }else{
+
+         result= await collection.deleteOne({_id: new ObjectId(req.params.id)});
+
+    }
+    
+   const counter= softdelete? result.matchedCount: result.deletedCount;
+     if (counter== 0 ){
         return next(new AppError("No record found for delete",404))
 
      }
-     return res.status(200).json({success: true,message:"Document Remove Cleanly",record:data});
+     return res.status(200).json({success: true,message:softdelete? "Document soft Deleted ": "Document Permanently purged" ,record:result});
 })
 
 update = catchAsync( async (req, res,next) => {
-            const collection = this.getCollNameFromReq(req);
-            const targetId = req.params.id;
 
-        if(!ObjectId.isValid(targetId)){
+   
+            const collection = this.getCollNameFromReq(req);
+
+         
+            const targetId = req.params.id;
+               if(!ObjectId.isValid(targetId)){
         return next(new AppError("input must be a 24 character hex string, 12 byte Uint8Array, or an integer",400));
     }
-            const result = await collection.updateOne(
-                { _id: new ObjectId(targetId) },
-                { $set: req.body }
-            );
+          
+            const currentVersion = req.currentDoc.version || 1;
+  
+            const queryFilterd={
+                 _id: new ObjectId(targetId) ,
+                  version: currentVersion
+            }
+           
+            console.log("+++++++++++++",targetId);
+            const updateOperation={
+                   $set:  req.body 
+            }
+               
+            if(frameworkConfig.schemaDefaults.optimisticConcurrencyControl){
+                updateOperation.$inc={
+                    version: 1}
+            }
+             
+            if(frameworkConfig.schemaDefaults.softDocumentDetele){
+                queryFilterd.deteledAt={$exists: false};
+            }
+
+       
+            const result = await collection.updateOne(queryFilterd, updateOperation);
+
+             
 
             if (result.matchedCount === 0) {
                 return next(new AppError("No document found matching that ID to update",404));

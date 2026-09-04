@@ -16,7 +16,7 @@ export const globalErorrHnadler = (err,req,res,next) => {
             success : `fail`,
             status: err.status,
             message: err.message || `An unexpected framework error occurred.`,
-            ...(process.env.APP_ENV  === `production` && {stack:err.stack})
+            ...(process.env.APP_ENV  === `admin` && {stack:err.stack})
 
                 }
     )

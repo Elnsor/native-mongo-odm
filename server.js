@@ -1,7 +1,9 @@
 import dotenv from "dotenv"
-import { initUserModule } from "./src/modules/User.js";
-import { connectDb, closeDb } from "./src/config/db.js";
 
+import { connectDb, closeDb,getDb } from "./src/config/db.js";
+import { collectionManager } from "./src/framework/CollectionManager.js";
+import { applicationSchemaRegistry } from "./src/framework/applicationSchemaRegistry.js";
+import { loadDirectory } from "./src/utils/dynamicImport.js";
 import app from './app.js'
 
 
@@ -16,11 +18,28 @@ async function bootstrap(){
 
     await connectDb();
    // collectionManager.dropCollection("users");
-    await initUserModule();
+   await loadDirectory('./src/modules')
+   collectionManager.syncAllCollectionOnBoot(applicationSchemaRegistry)
+    
     app.listen(PORT,()=>{
         console.log(`🌐 Production Modular Server operational on http://localhost:${PORT}`);
         
     });
+
+    // const db=getDb()
+//     try {
+ 
+//   if (result.writeErrors && result.writeErrors.length > 0) {
+//   // Print the complete error detail without collapsing [Object]
+//   console.log(JSON.stringify(result.writeErrors[0].errInfo, null, 2));
+// }
+//   console.log("Insert success:", result);
+// } catch (error) {
+//   // MongoDB returns detailed validation details in errInfo
+//   console.dir(error.writeErrors, { depth: null });
+// }
+
+   
 }
 
 async function gracefulShutdown(){

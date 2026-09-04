@@ -50,6 +50,17 @@ describe("Login Test",async ()=>{
           
 
         }
+         newUser={
+            _id:new ObjectId().toString(),
+           accountInfo: { 
+            password:fackHasingPass,
+            passwordHash:fackHasingPass,
+            email:fackEmail,
+            roleName:'user',
+        }
+          
+
+        }
         
          collobj={
            findOne:mock.fn(async function(){ return newUser})
@@ -63,9 +74,10 @@ describe("Login Test",async ()=>{
 
            req={
             body:{
-                email:fackEmail,
-                password:fackPass,
-            }
+                    email:fackEmail,
+                    password:fackPass,
+                }
+          
             
            };
            res={
@@ -118,8 +130,10 @@ describe("Login Test",async ()=>{
 
             req={
                 body:{
+                accountInfo:{
                     email:"example@example.com"
                 }
+            }
             };
             await login(req,res,next);
 
