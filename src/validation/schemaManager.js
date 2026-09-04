@@ -3,6 +3,8 @@
 import { BSONType, Collection } from "mongodb";
 import { AppError } from "../framework/appError.js";
 import { collectionManager } from "../framework/CollectionManager.js";
+import { applicationSchemaRegistry } from "../framework/applicationSchemaRegistry.js";
+import { frameworkConfig } from "../config/frameworkConfig.js";
 
 
 class SchemaValidationMananger {
@@ -15,13 +17,16 @@ class SchemaValidationMananger {
             double : "number",
             bool   : "boolean",
             date   : "object",
-            number : "number"
+            number : "number",
+            binData: "object",
+            object : "object",
+            array  : "object"
         };
 
         
     }
 /**
- * 
+ * its used for load mongodb schema schema from mongo server db  
  * @param {String} collectionName -- 
  * @returns {Collection} MongoDb Collection Objects
  */
@@ -42,38 +47,187 @@ class SchemaValidationMananger {
         }
 
 
+        const reqd= items.validator.$jsonSchema.required;
+        const prop= items.validator.$jsonSchema.properties
+
+        const fieldNames=Object.getOwnPropertyNames(prop);
+
+        const normalizedProp={}
+
+
+        for(let i=0;i < fieldNames.length; i++){
+            const name=fieldNames[i];
+            normalizedProp[name]={mongoRoles:{...prop[name]},appRoles:{}}
+
+        }
 
         this.schemaCache[collectionName] = {
-            required: items.validator.$jsonSchema.required,
-            properties: items.validator.$jsonSchema.properties
+            required:new Set(reqd),
+            properties:normalizedProp,
+           
+           
         };
 
         return this.schemaCache[collectionName];
 
     }
+/**
+ * used for load schema from cached aplication schema register
+ * @param {String} collectionName 
+ * @returns 
+ */
+    loadRegisterdSchema(collectionName) {
+
+        
+        try{
+            const baseSchema=applicationSchemaRegistry.getSchema(collectionName)
+
+            return {
+                required: baseSchema.getRequired(),
+                properties: baseSchema.getProperties()
+
+            };
+
+
+        }catch(err){
+            throw err;
+        }
+    }
 
     /**
- * 
+ * its used for get schema 
  * @param {String} collectionName -- 
  * @returns {Collection} MongoDb Collection Objects
  */
     async getSchema(collectionName) {
-        if (!this.schemaCache[collectionName]) {
-            await this.loadSchema(collectionName);
+
+        if(frameworkConfig.schemaDefaults.autoLoadingRegisterSchema){
+            return this.loadRegisterdSchema(collectionName)
         }
-        return this.schemaCache[collectionName];
+     
+            if (!this.schemaCache[collectionName]) {
+           await this.loadSchema(collectionName);
+            }
+         
+        
+
+        const schema=this.schemaCache[collectionName];
+
+        if(!schema.properties){
+            throw new AppError(`Security Exception: Collection '${collectionName}' has no defined validation schema layout. Access denied.`, 403);
+           }
+           return schema;
     }
+
+
+    
     /**
      * 
-     * @param {BSONType} type 
+     * @param {String} name - name of the field 
+     * @param {String} collname - name of the collection 
+     * @param {string} type - bsonType 
      * @param {*} val 
-     * @returns formating val or error
+     * @param {*} attr -- field attributes 
+     * @returns process value 
+     * @throws {AppError} -- if value is not valid 
      */
- formatValue(type, val) {
+ formatValue(name,collname,type, val,attr) {
   switch (type) {
     case 'string': {
-      if (val === undefined || val === null) return "";
-      return typeof val === 'string' ? val.trim() : String(val).trim();
+        let managedVal;
+      managedVal = (val === undefined || val === null)?"" : String(val) ;
+
+      if (frameworkConfig.schemaDefaults.autoTrimStrings) {
+        managedVal = managedVal.trim();
+    }
+
+      if(attr.minLength && managedVal.length < attr.minLength){
+
+            throw new Error(`Validation Error: Field ${name} in collection ${collname} actual sring value length less than minimim expected`);
+        }
+        if (attr.pattern) {
+            const regx = new RegExp(attr.pattern);
+            if (!regx.test(managedVal)) {
+                throw new Error(`Field ${name} in collection ${collname} not valid format`);
+            }
+        }
+
+      return managedVal;
+    }
+    case 'binData': {
+                let byteLength = 0;
+                let binaryOutput = val;
+
+                if (Buffer.isBuffer(val)) {
+                    byteLength = val.length;
+                    binaryOutput = new Binary(val);
+                } else if (val instanceof Binary) {
+                    byteLength = val.buffer.length;
+                } else if (val instanceof Uint8Array || ArrayBuffer.isView(val)) {
+                    byteLength = val.byteLength;
+                    binaryOutput = new Binary(Buffer.from(val.buffer, val.byteOffset, val.byteLength));
+                } else if (val instanceof ArrayBuffer) {
+                    byteLength = val.byteLength;
+                    binaryOutput = new Binary(Buffer.from(val));
+                } else if (typeof val === 'string') {
+                    const buf = Buffer.from(val, 'base64');
+                    byteLength = buf.length;
+                    binaryOutput = new Binary(buf);
+                } else {
+                    throw new Error(`Field ${name} in collection ${collname} must be a valid Buffer, ArrayBuffer, Uint8Array, or BSON Binary instance`);
+                }
+
+                if (attr.minLength && byteLength < attr.minLength) {
+                    throw new Error(`Validation Error: Field ${name} in collection ${collname} byte length (${byteLength}) is less than minimum expected (${attr.minLength})`);
+                }
+
+                if (attr.maxLength && byteLength > attr.maxLength) {
+                    throw new Error(`Validation Error: Field ${name} in collection ${collname} byte length (${byteLength}) exceeds maximum allowed (${attr.maxLength})`);
+                }
+
+                return binaryOutput;
+            }
+    case 'object': {
+    // Ultra-fast check for plain objects (excludes null, Array, Date, Buffer, Binary)
+    if (val && val.constructor === Object) {
+        return val;
+    }
+    throw new Error(`Field ${name} in collection ${collname} must be a valid plain Object`);
+}
+
+case 'array': {
+        if (!Array.isArray(val)) {
+            throw new Error(`Field ${name} in collection ${collname} must be a valid Array`);
+        }
+
+        if (attr.minItems !== undefined && val.length < attr.minItems) {
+            throw new Error(`Validation Error: Field ${name} in collection ${collname} array length (${val.length}) is less than minimum expected (${attr.minItems})`);
+        }
+
+        if (attr.maxItems !== undefined && val.length > attr.maxItems) {
+            throw new Error(`Validation Error: Field ${name} in collection ${collname} array length (${val.length}) exceeds maximum allowed (${attr.maxItems})`);
+        }
+
+        if (attr.uniqueItems) {
+            const uniqueCheck = new Set(val.map(item => (item && typeof item === 'object' ? JSON.stringify(item) : item)));
+            if (uniqueCheck.size !== val.length) {
+                throw new Error(`Validation Error: Field ${name} in collection ${collname} must contain unique items`);
+            }
+        }
+
+        // Optional: If an item schema definition is provided, recursively format/validate elements
+        if (attr.items && attr.items.bsonType) {
+            const itemType = attr.items.bsonType;
+            for (let i = 0; i < val.length; i++) {
+                try {
+                    val[i] = this.formatValue(`${name}[${i}]`, collname, itemType, val[i], attr.items);
+                } catch (err) {
+                    throw new Error(`Invalid item at index ${i}: ${err.message}`);
+                }
+            }
+        }
+
+        return val;
     }
 
     case 'int':
@@ -82,11 +236,21 @@ class SchemaValidationMananger {
        const num = Number(val); 
         //catch '' "" "  "
       if (num === 0 && val !== 0 && val !== "0") {
-         throw new Error(`value must be valid ${type}`);
+         throw new Error(`Field ${name}value must be valid ${type}`);
       }
       if (!Number.isInteger(num) || num != val) {
         throw new Error(`value must be valid ${type}`);
       }
+
+      if(attr.minimum && num <attr.minimum){
+
+            throw new Error(`Field ${name} in collection ${collname} actual number value  less than minimim expected`);
+        }
+        
+      if(attr.maximum && num > attr.maximum){
+
+            throw new Error(`Field ${name} in collection ${collname} actual number value  greater than maximum expected`);
+        }
       return num;
     }
 
@@ -99,8 +263,18 @@ class SchemaValidationMananger {
          throw new Error(`value must be valid ${type}`);
       }
       if (Number.isNaN(num) || num != val) {
-        throw new Error("value must be valid decimal number");
+        throw new Error(`Field ${name} of type ${type} value must be valid decimal number`);
       }
+
+      if(attr.minimum && num < attr.minimum){
+
+            throw new Error(`Field ${name} in collection ${collname} actual number value ${val}  less than minimim expected ${attr.minimum}`);
+        }
+        
+      if(attr.maximum && num > attr.maximum){
+
+            throw new Error(`Field ${name} in collection ${collname} actual number value ${val}  greater than maximum expected ${attr.maximum}`);
+        }
       return num;
     }
 
@@ -117,7 +291,7 @@ class SchemaValidationMananger {
     }
 
     default:
-      throw new Error("Unknown type");
+      throw new Error(`Unknown type in field ${name} in collection ${collname}`);
   }
 }
    
@@ -136,7 +310,17 @@ _proccessAndValidateValue(collectionName, fieldName, value, fieldSchema) {
 
         }
 
-        if (value == null) return null;
+       // Handle null values based on schema configuration or type rules
+    if (value === null) {
+        // Check if explicitly marked as nullable in application roles or mongo roles
+        const isNullable = fieldSchema?.appRoles?.nullable || fieldSchema?.nullable;
+
+        if (isNullable) {
+            return null; // Explicitly allowed to be null
+        }
+
+        throw new AppError(`Validation Error: Field '${fieldName}' in collection '${collectionName}' cannot be null`, 400);
+    }
 
         const expectedBsonType = fieldSchema?.bsonType;
         
@@ -144,20 +328,14 @@ _proccessAndValidateValue(collectionName, fieldName, value, fieldSchema) {
 
         
             try {
-                proccessValue = this.formatValue(expectedBsonType,value);
+                proccessValue = this.formatValue(fieldName,collectionName,expectedBsonType,value,fieldSchema);
 
             } catch (error) {
-                throw new AppError(`Validation Error: Field ${fieldName} ${error.message}`, 400);
+                throw new AppError(`Validation Error: ${error.message}`, 400);
 
             }
 
-        
-        if (fieldSchema.pattern) {
-            const regx = new RegExp(fieldSchema.pattern);
-            if (!regx.test(proccessValue)) {
-                throw new AppError(`Validation Error: Field ${fieldName} in collection ${collectionName} not valid format`, 400);
-            }
-        }
+
         return proccessValue;
 
 
@@ -195,106 +373,102 @@ _proccessAndValidateValue(collectionName, fieldName, value, fieldSchema) {
         return newValue;
     }
 
-    /**
-     * 
-     * @param {*} collectionName 
-     * @param {*} doc -- Mongo Document 
-     * @param {JSON} skipRequired -- contain Passed Field ,any field you need to execlude it from validation steps 
-     * @param {bool} isUpdate -- true : operation is update , false: operation is create new doc
-     * @returns Valid Document or error 
-     */
-    async validateDocument(collectionName, doc, skipRequired = {"_id":true, "createdAt":true, "updatedAt":true},isUpdate) {
+   
+_getNestedValue(obj, path) {
+    if (!path.includes('.')) return obj?.[path];
     
-
-    // Fast initial falsy check before attempting copy or parsing operations 
-    if (!doc) {
-        throw new AppError("Validation Error: Not a Valid Document", 400);
-    }
-
-    let newDocument = typeof doc === 'string' ? JSON.parse(doc) : { ...doc };
+    const keys = path.split('.');
+    let current = obj;
     
-     const rawkey=Object.getOwnPropertyNames(newDocument);
-     let docKey=[];
-    // generate filtered key arry based on skiping
-    for(let i=0 ; i<rawkey.length ;i++){
-        const key=rawkey[i];
-        if(!skipRequired[key]){
-            docKey.push(key);
-        }
-
-    }
-     if(docKey.length ===0 ){
-        
-        throw new AppError("Validation Error: Empty Document Not Allowed", 400);
-
-    }
-
-    const schema = await this.getSchema(collectionName);
-    
-    // maybe this collection does not have schema 
-    if (!schema.properties || !schema.required) {
-        return newDocument;
+    for (let i = 0; i < keys.length; i++) {
+        if (current == null || typeof current !== 'object') return undefined;
+        current = current[keys[i]];
     }
     
-    const schemaRequired=schema.required;
-
-    let newRequired=Object.create(null);
-
-    // filter required based on skiping 
-
-    for(let i=0;i<schemaRequired.length;i++){
-        const key=schemaRequired[i];
- if(!skipRequired[key]){
-     newRequired[key]=true};
+    return current;
 }
 
-// newreq , dockey 
-   
-    
-    const schemaProperties = schema.properties;
-    
+/**
+ * Sets a value on a target object using a dot-notation path, creating parent objects if missing
+ * e.g., _setNestedValue(sanitizerDoc, "accountInfo.email", "john@example.com")
+ */
+_setNestedValue(obj, path, value) {
+    if (!path.includes('.')) {
+        obj[path] = value;
+        return;
+    }
 
-    // compine validation & update verification loop
-    for (const field of docKey) {
+    const keys = path.split('.');
+    let current = obj;
+
+    for (let i = 0; i < keys.length - 1; i++) {
+        const key = keys[i];
+        if (!current[key] || typeof current[key] !== 'object') {
+            current[key] = {};
+        }
+        current = current[key];
+    }
+
+    current[keys[keys.length - 1]] = value;
+}
+
+
+async validateDocument(collectionName, doc, skipRequired = { "_id": true, "createdAt": true, "updatedAt": true }, isUpdate) {
+    
+    if (!doc || typeof doc !== 'object' || Array.isArray(doc)) {
+        throw new AppError("Validation Failure: Document payload must be a valid object.", 400);
+    }
+
+    let sanitizerDoc = {};
+    const schema = await this.getSchema(collectionName);
+    
+    const schemaBlueprint = schema.properties;
+    const schemaRequired = schema.required; // Stored as Set
+    const schemaBlueprintKey = Object.getOwnPropertyNames(schemaBlueprint);
+
+    // Track unmapped fields to block unauthorized properties
+    const docSet = new Set(Object.getOwnPropertyNames(doc));
+
+    for (let i = 0; i < schemaBlueprintKey.length; i++) {
+        const fieldName = schemaBlueprintKey[i]; // May be "accountInfo" or "accountInfo.email"
+        const fieldDefinition = schemaBlueprint[fieldName];
+        const fieldMongoRoles = fieldDefinition.mongoRoles;
+        const fieldappRoles = fieldDefinition.appRoles;
+
+        // 1. Extract value using dot-notation path lookup
+        const fieldValue = this._getNestedValue(doc, fieldName);
+
+        // Clear root key from unmapped set (e.g., "accountInfo")
+        const rootKey = fieldName.split('.')[0];
+        docSet.delete(rootKey);
+
+        // 2. Skip parent object containers since children validate individually
+        if (fieldMongoRoles.bsonType === 'object') {
+            continue;
+        }
+
+        // 3. Required check enforcement
+        if (fieldValue === undefined || fieldValue === null) {
+            if (schemaRequired.has(fieldName) && (!skipRequired[fieldName] && !fieldappRoles?.managedBySystem)) {
+                throw new AppError(`Validation Failure: Required field '${fieldName}' is missing.`, 400);
+            }
+            continue;
+        }
+
+        // 4. Format & validate primitive value[cite: 3]
+        const validatedValue = this._proccessAndValidateValue(collectionName, fieldName, fieldValue, fieldMongoRoles);
+
+        // 5. Write back to sanitized document using nested path setter
+        this._setNestedValue(sanitizerDoc, fieldName, validatedValue);
+    }
         
-        const value = newDocument[field];
-        if (value === null) continue;
-
-        const fieldSchema = schemaProperties[field];
-
-        if (!fieldSchema) {
-            throw new AppError(`Validation Error: field '${field}' is not valid for collection ${collectionName}`, 400);
-        }
-
-        // Run validation and re-assign formatted primitives
-        const validatedValue = this._proccessAndValidateValue(collectionName, field, value, fieldSchema);
-        newDocument[field] = validatedValue;
-
-        //  Merge update validation checks right here inside the primary loop iteration!
-        if (isUpdate && newRequired[field] && (validatedValue === "" || validatedValue === null)) {
-            throw new AppError(`Validation Error: updated field '${field}' in collection '${collectionName}' cannot be empty`, 400);
-        }
+    // 6. Security Check: Block undefined structural fields[cite: 3]
+    if (docSet.size > 0) {
+        const forbiddenFields = [...docSet].join(', ');
+        throw new AppError(`Security Exception: Direct modification of undefined structural fields [${forbiddenFields}] is blocked.`, 400);
     }
 
-    // Required schema constraints handler block for creation operations
-    if (!isUpdate) {
-        for (const field in newRequired) {
-           
-
-            const val = newDocument[field];
-            // Explicit check ensures falsy zeros or booleans are not flagged as missing parameters
-            if (val === 0 || val === false || (val !== undefined && val !== null && val !== "")) continue;
-
-            throw new AppError(`Validation Error: required field '${field}' is missing or empty for collection ${collectionName}`, 400);
-        }
-
-        newDocument.createdAt = new Date();
-        newDocument.updatedAt = newDocument.createdAt;
-    } else {
-        newDocument.updatedAt = new Date();
-    }
-
-    return newDocument;
+    return sanitizerDoc;
 }
 }
 
