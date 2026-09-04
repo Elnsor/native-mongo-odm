@@ -1,6 +1,8 @@
 import { describe, test, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { ObjectId } from 'mongodb/lib/bson.js'
+import { ObjectId } from '../../node_modules/mongodb/lib/bson.js'
+import { frameworkConfig } from '../config/frameworkConfig.js';
+import { version } from 'node:os';
 
 
 
@@ -38,7 +40,8 @@ describe("", () => {
             params: {
                 collectionName: 'users',
                 id: new ObjectId().toString()
-            }
+            },
+            currentDoc: { version: 1 }
         };
 
         res = {
@@ -47,6 +50,9 @@ describe("", () => {
         }
 
         next = mock.fn();
+
+        frameworkConfig.schemaDefaults.optimisticConcurrencyControl=false;
+        frameworkConfig.schemaDefaults.softDocumentDetele=false
 
 
 
@@ -57,16 +63,28 @@ describe("", () => {
         mock.restoreAll();
     });//after
 
-    describe("gevin: create() : to insert Doc", () => {
+    describe("gevin: create() : to insert Doc ", () => {
 
-        test("should insert and return HTTP status Code 201", async () => {
+        test("should insert and return HTTP status Code 201 and document not contain version field with OCC disable", async () => {
 
             assert.deepEqual(req.body, { username: 'elkas' })
             await controller.create(req, res, next);
             assert.equal(collectionObject.insertOne.mock.calls.length, 1);
             assert.deepEqual(collectionObject.insertOne.mock.calls[0].arguments[0], req.body);
             assert.equal(res.status.mock.calls[0].arguments[0], 201);
+        });
+
+        test("should insert and return HTTP status Code 201 and document contain version field with OCC enable its add version field", async () => {
+
+
+            frameworkConfig.schemaDefaults.optimisticConcurrencyControl=true
+            assert.deepEqual(req.body, { username: 'elkas' })
+            await controller.create(req, res, next);
+            assert.equal(collectionObject.insertOne.mock.calls.length, 2);
+            assert.deepEqual(collectionObject.insertOne.mock.calls[1].arguments[0], {...req.body,version: 1});
+            assert.equal(res.status.mock.calls[0].arguments[0], 201);
         })
+
     }); // end describe 
 
     describe("gevin: findAll() : to find Docs", () => {
@@ -100,10 +118,18 @@ describe("", () => {
     });
 
     describe("given: remove() : to delete Doc", () => {
-        test("should dorp routing safly and delete Doc with matching Id", async () => {
+        test("should dorp routing safly and delete Doc with matching Id with soft deleted disabled", async () => {
             await controller.remove(req, res, next);
 
             assert.equal(collectionObject.deleteOne.mock.calls.length, 1);
+            assert.equal(res.status.mock.calls[0].arguments[0], 200);
+        });
+        test("should perform soft delete when soft delete feature is enabled", async () => {
+            frameworkConfig.schemaDefaults.softDocumentDetele = true;
+
+            await controller.remove(req, res, next);
+
+            assert.equal(collectionObject.updateOne.mock.calls.length, 2);
             assert.equal(res.status.mock.calls[0].arguments[0], 200);
         });
     });

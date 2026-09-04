@@ -1,169 +1,95 @@
-import { describe, test, mock, beforeEach, afterEach } from "node:test";
-import assert from "node:assert/strict";
-import { getDb as OriginalGetDb } from "../config/db.js";
-import { SchemaBuilder } from "../framework/SchemaBuilder.js";
+
+import { describe, it, beforeEach, mock } from 'node:test';
+import assert from 'node:assert';
+
+import { SchemaBuilder } from '../framework/SchemaBuilder.js';
+import { applicationSchemaRegistry } from '../framework/applicationSchemaRegistry.js';
+import {getDb, getDb as originalGetDb}  from '../config/db.js';
 
 
-const mockGetDb = mock.fn(OriginalGetDb)
+const mockGetDb=mock.fn(originalGetDb);
 
-let mockCollectionObj = {
-    drop: mock.fn(() => Promise.resolve(true)),
-    createIndex: mock.fn(async () => ({ success: true }))
-};
-
-
-let mockdb = {
-    createCollection: mock.fn(async () => mockCollectionObj),
-    collection: mock.fn(() => mockCollectionObj),
-    listCollections: mock.fn(() => ({
-        toArray: async () => []
-    }))
-};
+ let mockdb={
+            listCollections: ()=>({
+                toArray: async()=> [{name: 'logs'}] 
+            }),
+            collection: ()=> mockCollection
+        }
+mockGetDb.mock.mockImplementation(()=> mockdb);
+ 
+let mockCollection={
+            drop: async()=> true
+        }
 
 
-mockGetDb.mock.mockImplementation(() => mockdb);
-
-mock.module("../config/db.js", {
-    exports: {
-        getDb: mockGetDb,
+mock.module('../config/db.js',{
+    exports:{
+        getDb : mockGetDb
     }
-});
+})
 
-const { collectionManager } = await import(`../framework/CollectionManager.js?update=${Date.now()}`);
-
-describe("Unit Test: Collection Manager", () => {
-    let schemasample;
+const {CollectionManager} = await import('../framework/CollectionManager.js')
+describe("Unit Test Suite: CollectionManager", () => {
+    let collectionManager;
 
     beforeEach(() => {
-
-        collectionManager.cache = {};
-        collectionManager.current = null;
-
-
-        schemasample = new SchemaBuilder();
-        schemasample.string({ name: "username", config: { required: true } });
-        schemasample.setIndexOption({ username: 1 }, { unique: true });
+        /**
+         * @type {CollectionManager}
+         */
+        collectionManager = new CollectionManager();
+        if (applicationSchemaRegistry.isRegister("logs")) {
+            applicationSchemaRegistry.unregister("logs");
+        }
+        if (applicationSchemaRegistry.isRegister("users")) {
+            applicationSchemaRegistry.unregister("users");
+        }
     });
 
-    afterEach(() => {
+    it("should throw an error if collection creation is attempted without prior schema registration", async () => {
+        const builder = new SchemaBuilder("users");
 
-        mockCollectionObj.createIndex.mock.resetCalls();
-        mockCollectionObj.drop.mock.resetCalls();
-        mockdb.createCollection.mock.resetCalls();
-        mockdb.listCollections.mock.resetCalls();
-        mockdb.collection.mock.resetCalls();
-
-
-        mockdb.listCollections.mock.mockImplementation(() => ({ toArray: async () => [] }));
-        mockCollectionObj.drop.mock.mockImplementation(() => Promise.resolve(true));
+        await assert.rejects(async () => {
+            await collectionManager.createCollectionv1("users", false);
+        }, /CollectionError: you must register your schema first !!/);
     });
 
-    describe("Core Functionalities : ", () => {
+    it("should correctly handle collection cache retrieval and current collection tracking", async () => {
+        const dummyCollection = { collectionName: "users" };
+        collectionManager.cache["users"] = dummyCollection;
+        collectionManager.current = "users";
 
-        describe("Gevin : Create new Collection users ", () => {
-            test("shoud create New collection name users with indexed and update caches", async () => {
-                const collName = "users";
-                const result = await collectionManager.createCollection(collName, schemasample);
+        const cachedCollection = collectionManager.getCollectionCache();
+        const currentSelected = collectionManager.getCurrentCollection();
 
-                assert.equal(mockdb.createCollection.mock.calls.length, 1);
-                const CArgs = mockdb.createCollection.mock.calls[0].arguments;
-
-                assert.equal(CArgs[0], collName);
-                assert.deepStrictEqual(CArgs[1].validator.$jsonSchema.bsonType, 'object');
-
-                assert.equal(mockCollectionObj.createIndex.mock.calls.length, 1);
-                assert.deepStrictEqual(mockCollectionObj.createIndex.mock.calls[0].arguments[0], { username: 1 });
-
-                assert.deepEqual(collectionManager.cache[collName], mockCollectionObj);
-                assert.equal(collectionManager.current, collName);
-                assert.equal(result, mockCollectionObj);
-            });
-        });
-
-        describe("Gevin : Get Collection From Cache ", () => {
-            test("shoud retun collection from cache immediatly if collection already in the cache ", async () => {
-                const collName = "products";
-
-
-                mockdb.listCollections.mock.mockImplementationOnce(() => ({
-                    toArray: async () => [{ name: collName }]
-                }));
-
-                await collectionManager.createCollection(collName, schemasample);
-                const result = await collectionManager.createCollection(collName, schemasample);
-
-
-                assert.equal(mockdb.listCollections.mock.calls.length, 1);
-                assert.equal(result, mockCollectionObj);
-            });
-        });
-
-        describe("Gevin : Drop Collection ", () => {
-            test("shoud drop it from caches and drop return true ", async () => {
-                const collName = "logs";
-                collectionManager.cache[collName] = mockCollectionObj;
-                collectionManager.current = collName;
-
-                const drop = await collectionManager.dropCollection(collName);
-
-                assert.equal(drop, true);
-                assert.equal(mockCollectionObj.drop.mock.calls.length, 1);
-                assert.equal(collectionManager.cache[collName], undefined);
-                assert.equal(collectionManager.current, null);
-            });
-        });
+        assert.deepStrictEqual(cachedCollection, { users: dummyCollection });
+        assert.strictEqual(currentSelected, "users");
     });
 
-    describe("Edge Cases : add index ", () => {
+    it("should select collection and update current state if collection exists in cache", async () => {
+        const dummyCollection = { collectionName: "logs" };
+        collectionManager.cache["logs"] = dummyCollection;
 
-        describe("Gevin : Add new index for not exsist field ", () => {
-            test("shoud not accepted and throw error", async () => {
-                const collName = "users";
-                schemasample.setIndexOption({ email: 1 }, { unique: true });
+        // Mocking getCollection internal flow or testing cache hit scenario via selectCollection
+        // Note: selectCollection delegates to getCollection which checks cache first
+        const result = await collectionManager.selectCollection("logs");
+        assert.strictEqual(collectionManager.getCurrentCollection(), "logs");
+    });
 
-                await assert.rejects(
-                    async () => {
-                        await collectionManager.createCollection(collName, schemasample);
-                    },
-                    (err) => {
-                        assert.match(err.message, /XX Schema Compilation Error/i);
-                        return true;
-                    }
-                );
+    it("should properly unregister schema and clear cache when dropping a collection", async () => {
+        const builder = new SchemaBuilder("logs")
+            .string({ name: "message", config: { required: true } });
 
-                assert.equal(mockdb.createCollection.mock.calls.length, 0);
-            });
-        });
+        applicationSchemaRegistry.register("logs", builder);
+        collectionManager.cache["logs"] = { name: "logs" };
+        collectionManager.current = "logs";
 
-        describe("Gevin : Drop Non Exist Collection ", () => {
-            test("shoud drop return false", async () => {
-                mockCollectionObj.drop.mock.mockImplementationOnce(() => {
-                    throw new Error("MongoServerError: ns not found");
-                });
+        assert.strictEqual(applicationSchemaRegistry.isRegister("logs"), true);
+       
+       const result= await collectionManager.dropCollection("logs");
 
-                const collName = "dummy";
-                const drop = await collectionManager.dropCollection(collName);
-
-                assert.equal(drop, false);
-            });
-        });
-
-        describe("Gevin : listCollection faild inside getCollection ", () => {
-            test("shoud throw connection error ", async () => {
-                mockdb.listCollections.mock.mockImplementationOnce(() => {
-                    throw new Error("Fatal DB Connection Lost");
-                });
-
-                await assert.rejects(
-                    async () => {
-                        await collectionManager.getCollection("dummy_collection");
-                    },
-                    (err) => {
-                        assert.match(err.message, /Fatal DB Connection Lost/);
-                        return true;
-                    }
-                );
-            });
-        });
+        assert.strictEqual(result,true);
+        assert.strictEqual(applicationSchemaRegistry.isRegister("logs"), false);
+        assert.strictEqual(collectionManager.getCollectionCache()["logs"], undefined);
+        assert.strictEqual(collectionManager.getCurrentCollection(), null);
     });
 });

@@ -6,6 +6,7 @@ import {  hashPassworNative as originalHash } from '../utils/helperhash.js';
 import { collectionManager } from '../framework/CollectionManager.js';
 import { ObjectId } from 'mongodb/lib/bson.js';
 import { schemaManager } from '../validation/schemaManager.js';
+import { securityRulesEngine } from '../framework/engines/SecurityRulesEngine.js';
 import dotenv from 'dotenv'
 
 dotenv.config();
@@ -40,9 +41,11 @@ describe("Register System Test",async ()=>{
 
         newUser={
            username:"dumyName",
-            password:fackPass,
-            email:fackEmail,
-            role:'user',
+            accountInfo:{
+                password:fackPass,
+                email:fackEmail,
+                roleName:'user',
+            }
         }
         
         collobj={
@@ -55,6 +58,7 @@ describe("Register System Test",async ()=>{
             return {users:collobj}
            });
            mock.method(schemaManager,"validateDocument",async()=>req.body);
+           mock.method(securityRulesEngine,"evalRoles",async () => newUser )
 
            req={
             body:{...newUser}
@@ -83,7 +87,7 @@ describe("Register System Test",async ()=>{
     
                 await register(req,res,next);
     
-                
+               // 
                 assert.equal(next.mock.calls.length,0);
 
                 assert.equal(collectionManager.getCollectionCache.mock.calls.length,1)
@@ -112,9 +116,9 @@ describe("Register System Test",async ()=>{
     
 newUser={
            username:"dumyName",
-            
-            email:fackEmail,
-            role:'user',
+            accountInfo:
+            {email:fackEmail,
+            role:'user',}
         }
 
         req={
@@ -123,6 +127,7 @@ newUser={
                 await register(req,res,next);
     
                 assert.equal(next.mock.calls.length,1);
+               
                 assert.equal(next.mock.calls[0].arguments[0].statusCode,400);
                 assert.match(next.mock.calls[0].arguments[0].message,/ password is required/i);
     

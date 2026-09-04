@@ -1,4 +1,4 @@
-import { MongoClient, ServerApiVersion } from "mongodb";
+import { Db, MongoClient, ServerApiVersion } from "mongodb";
 import dotenv from "dotenv"
 
 dotenv.config();
@@ -12,13 +12,14 @@ dotenv.config();
  */
 
 const {
-  MONGODB_URI,
   MONGODB_PROTOC,
+  MONGODB_URI,
   MONGODB_USERNAME,
   MONGODB_PASSWORD,
   MONGODB_ADDRS,
   MONGODB_DBNAME = "monolith-odm-db",
 } = process.env;
+
 
 function buildUri() {
   if (MONGODB_URI) return MONGODB_URI;
@@ -42,6 +43,8 @@ function buildUri() {
   // No auth just a protocol and address
   return `${MONGODB_PROTOC}://${MONGODB_ADDRS}`;
 }
+
+
 
 const uri = buildUri();
 
@@ -104,9 +107,13 @@ export async function connectDb(){
     } )();
     return connectionPromise;
 }
-
+/**
+ * 
+ * @returns {Db}
+ */
 export function getDb(){
     if(isConnected && db){
+     
         return db;
     }
     throw new Error("Database not connected yet (initialize it : Call connectDb() first)!!")
