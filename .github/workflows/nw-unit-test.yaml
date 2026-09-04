@@ -4,6 +4,15 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+     MONGODB_PROTOC: ${{ secrets.MONGODB_PROTOC }}
+     MONGODB_URI: ${{ secrets.MONGODB_URI }}
+     MONGODB_USERNAME: ${{ secrets.MONGODB_USERNAME }}
+     MONGODB_PASSWORD: ${{ secrets.MONGODB_PASSWORD }}
+     MONGODB_ADDRS: ${{ secrets.MONGODB_ADDRS }}
+     MONGODB_DBNAME: "monolith-odm-db"
+     SECRET_KEY: ${{ secrets.SECRET_KEY }}
+     APP_ENV: ${{ secrets.APP_ENV }}
     strategy:
       fail-fast: false
       matrix:
