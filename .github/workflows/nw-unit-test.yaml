@@ -1,6 +1,12 @@
 name: New Unit Test 
 on:
   workflow_dispatch
+
+permissions:
+  checks: write
+  pull-requests: write
+  contents: read
+  statuses: write
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -35,12 +41,12 @@ jobs:
     name: Test - ${{ matrix.test.name }}
     steps:
       - name: Get Code 
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node 24 
         uses: actions/setup-node@v7
         with:
-          node-version: '24'
+          node-version: '20'
           cache: 'npm'
       - name: Install dependencies
         run: npm ci 
@@ -52,7 +58,7 @@ jobs:
             --test-reporter-destination=${{ matrix.test.report }} \
             src/tests/${{ matrix.test.file }}
       - name: Upload Test Result 
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: test-result-${{ matrix.test.name }}
@@ -65,7 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download Artifact Reporters 
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: test-result-*
           merge-multipe: true
