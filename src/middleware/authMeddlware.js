@@ -2,6 +2,7 @@ import { AppError } from "../framework/appError.js";
 import { collectionManager } from "../framework/CollectionManager.js";
 import { verifyTokenFromScratch } from "../utils/jwtEngine.js";
 import { ObjectId } from "mongodb/lib/bson.js";
+import { Projection } from "../framework/engines/projectionEngine.js";
 
 /**
  * 
@@ -36,11 +37,13 @@ try{
     throw new AppError("Authentication System Error: users Collection is inactive state",500);
   }
 
-  const currentUser=await userCollection.findOne({_id: new ObjectId(payload.id)},{ projection :{ password:0 , salt:0 }});
+  const currentUser=await userCollection.findOne({_id: new ObjectId(payload.id)},{ projection : Projection.getProjection(`users`)});
 
   if(!currentUser){
     throw new AppError("Authentication Faild: the User belong to this active Token no longer exist!! ",401);
   }
+// user card
+
 
   req.user=currentUser;
   next();
