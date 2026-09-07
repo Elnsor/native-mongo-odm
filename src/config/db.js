@@ -127,6 +127,12 @@ export function getDb(){
     throw new Error("Database not connected yet (initialize it : Call connectDb() first)!!")
 }
 
+/** for return client i need to change db name  */
+
+export function getClient(){
+  return client;
+}
+
 /** change by add try catch with finaly */
 
 export async function closeDb(){
