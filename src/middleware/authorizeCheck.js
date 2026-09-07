@@ -2,7 +2,7 @@ import { AppError } from "../framework/appError.js";
 import { collectionRole } from "../framework/permissions.js";
 
 /**
- * 
+ * not complite one in feature we add RBAC system access check her 
  * @param {Sting} role action  [read][write ]
  * @returns 
  */

@@ -47,6 +47,10 @@ const fromBase64Url = (base64Url)=>{
 
 export const signTokenFromScratch = (payload,secret,timeInHours=24) => {
 
+     if (!secret || typeof secret !== 'string' || secret.length < 32) {
+        throw new Error("SECURITY: SECRET_KEY must be a string of at least 32 characters");
+    }
+
 const headr={
      alg: "HS256",
      typ: "jwt"

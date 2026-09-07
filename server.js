@@ -17,27 +17,15 @@ const PORT=3000
 async function bootstrap(){
 
     await connectDb();
-   // collectionManager.dropCollection("users");
+  //dynamic importing 
    await loadDirectory('./src/modules')
+   //warm caching and registeration 
    collectionManager.syncAllCollectionOnBoot(applicationSchemaRegistry)
     
     app.listen(PORT,()=>{
         console.log(`🌐 Production Modular Server operational on http://localhost:${PORT}`);
         
     });
-
-    // const db=getDb()
-//     try {
- 
-//   if (result.writeErrors && result.writeErrors.length > 0) {
-//   // Print the complete error detail without collapsing [Object]
-//   console.log(JSON.stringify(result.writeErrors[0].errInfo, null, 2));
-// }
-//   console.log("Insert success:", result);
-// } catch (error) {
-//   // MongoDB returns detailed validation details in errInfo
-//   console.dir(error.writeErrors, { depth: null });
-// }
 
    
 }
