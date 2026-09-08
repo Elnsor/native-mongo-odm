@@ -45,7 +45,7 @@ id = new ObjectId(id);
     }
 
     req.body = await schemaManager
-                     .validateDocumcent(
+                     .validateDocument(
                         collectionName,
                         req.body,
                         {"_id":true, "createdAt":true, "updatedAt":true,"salt":true},
