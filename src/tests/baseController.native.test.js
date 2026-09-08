@@ -52,7 +52,7 @@ describe("", () => {
         next = mock.fn();
 
         frameworkConfig.schemaDefaults.optimisticConcurrencyControl=false;
-        frameworkConfig.schemaDefaults.softDocumentDetele=false
+        frameworkConfig.schemaDefaults.softDocumentDelete=false
 
 
 
