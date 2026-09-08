@@ -326,7 +326,7 @@ withTimestamps() {
 withVersionConcurrencyControl(){
 
     if(frameworkConfig.schemaDefaults.optimisticConcurrencyControl){
- const occConfig = { required: true,select: true };
+ const occConfig = { required: true,select: true ,managedBySystem:{ type: 'version'},immutable:true};
  this.#applySystemRules("version",{bsonType:'number',description:`this for prevent 2 client from update one document in same time`},occConfig)
     }
 }
