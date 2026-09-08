@@ -478,7 +478,8 @@ describe('BasePersistence Integration Tests (MongoDB Atlas)', () => {
             console.log(`⚡ Saved 10 documents in ${duration.toFixed(2)}ms`);
             
             //in atlas one insertion may take 500 ms so for 10 it may take 5000 ms or 5 second 
-            assert.ok(duration < 7000, `Took ${duration}ms, expected < 7000ms`);
+             //after test i see it took about 1s in atlas one insertion  for 10 it may take 10000 ms or 10 second 
+            assert.ok(duration < 10000, `Took ${duration}ms, expected < 10000ms`);
         });
 
      it('should save 10 documents in batch (faster)', async () => {
