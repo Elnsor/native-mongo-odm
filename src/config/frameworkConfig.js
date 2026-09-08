@@ -61,7 +61,7 @@ export const frameworkConfig =
         // it add deletedAt field that hold the date when document is deleted 
         // if true meaning soft deleted if fasle then the document is deleted from db too
 
-        softDocumentDelete: true
+        softDocumentDelete: false
     },
     systemManageTypeSpecifications: {
         date: {
