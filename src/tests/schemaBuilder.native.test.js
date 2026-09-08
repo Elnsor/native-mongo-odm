@@ -79,7 +79,7 @@ describe("Unit Test: SchemaBuilder", () => {
             assert.strictEqual(properties.updatedAt.appRoles.immutable, false);
             
             assert.strictEqual(properties.version.mongoRoles.bsonType, 'number');
-            assert.strictEqual(properties.version.appRoles.immutable, false); // Mutable to allow increments
+            assert.strictEqual(properties.version.appRoles.immutable, true); // immutable her is for compare current doc with update one but versioning done in crud 
         });
 
         it("should build array, object, time, and binData field types correctly", () => {
