@@ -37,6 +37,7 @@ jobs:
             - { name: "Projection Engine ", file: "projection.native.test.js", report: "projection-engine-report.xml" }
             - { name: "Security Role Engine ", file: "securityRoleEngin.native.test.js", report: "security-role-engine-report.xml" }
             - { name: "Schema Builder Object ", file: "schemaBuilder.native.test.js", report: "schema-builder-object-report.xml" }
+            - { name: "Atomic Transaction ", file: "basePresistence.native.test.js", report: "base-presistence-transaction-report.xml" }
 
     name: Test - ${{ matrix.test.name }}
     steps:
