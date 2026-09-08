@@ -412,6 +412,22 @@ _setNestedValue(obj, path, value) {
     current[keys[keys.length - 1]] = value;
 }
 
+//for check exist key in object nested object in mongo collection 
+
+_isFieldExplicitlyProvided(doc, fieldName) {
+    const keys = fieldName.split('.');
+    let current = doc;
+    for (let i = 0; i < keys.length; i++) {
+        const key = keys[i];
+ 
+        if (current === null || typeof current !== 'object' || !(key in current)) {
+            return false;
+        }
+        current = current[key];
+    }
+    return true;
+}
+
 
 async validateDocument(collectionName, doc, skipRequired = { "_id": true, "createdAt": true, "updatedAt": true }, isUpdate) {
     
@@ -450,7 +466,9 @@ async validateDocument(collectionName, doc, skipRequired = { "_id": true, "creat
         // 3. Required check enforcement
         if (fieldValue === undefined || fieldValue === null) {
             if (schemaRequired.has(fieldName) && (!skipRequired[fieldName] && !fieldappRoles?.managedBySystem)) {
+                if(!isUpdate || this._isFieldExplicitlyProvided(doc,fieldName))
                 throw new AppError(`Validation Failure: Required field '${fieldName}' is missing.`, 400);
+                
             }
             continue;
         }
