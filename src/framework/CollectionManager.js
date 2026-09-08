@@ -86,7 +86,7 @@ export class CollectionManager{
     
         const db=getDb();
 
-        const collectionObject=await this.getCollection(collectionName);
+       let collectionObject=await this.getCollection(collectionName);
 
         if(collectionObject && ! update){
          this.cache[collectionName]=collectionObject;
@@ -106,7 +106,7 @@ export class CollectionManager{
             
             }else if (update){
 
-                await db.runCommand({
+                await db.command({
                 collMod: collectionName,
                 validator: compileValidator.validator
             });
