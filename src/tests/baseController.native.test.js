@@ -125,7 +125,7 @@ describe("", () => {
             assert.equal(res.status.mock.calls[0].arguments[0], 200);
         });
         test("should perform soft delete when soft delete feature is enabled", async () => {
-            frameworkConfig.schemaDefaults.softDocumentDetele = true;
+            frameworkConfig.schemaDefaults.softDocumentDelete = true;
 
             await controller.remove(req, res, next);
 
