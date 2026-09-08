@@ -3,6 +3,7 @@ import crypto from "crypto";
 
 export const coreSystemManageTypes = {
     date: () => new Date(),
+    version:() => 1,
     uuid: () => crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15),
     slugify: (doc, params) => {
         const target = params?.targetField; 
