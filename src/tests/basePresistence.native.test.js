@@ -29,11 +29,8 @@ describe('BasePersistence Integration Tests (MongoDB Atlas)', () => {
 
     // preparing test 
     beforeEach(async () => {
-<<<<<<< HEAD
-        //connected to db 
-=======
         // connected to Atlas
->>>>>>> 18ee1f6d5fb82df4b6170086ec57f3d2f24eb0a4
+
         await connectDb();
         frameworkConfig.schemaDefaults.softDocumentDelete=true;
 
