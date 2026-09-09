@@ -29,9 +29,16 @@ describe('BasePersistence Integration Tests (MongoDB Atlas)', () => {
 
     // preparing test 
     beforeEach(async () => {
+<<<<<<< HEAD
         //connected to db 
+=======
+        // connected to Atlas
+>>>>>>> 18ee1f6d5fb82df4b6170086ec57f3d2f24eb0a4
         await connectDb();
         frameworkConfig.schemaDefaults.softDocumentDelete=true;
+
+        //enable soft delelted 
+         frameworkConfig.schemaDefaults.softDocumentDelete=true;
 
         // creat collection schem "test_items"
         const builder = new SchemaBuilder("test_items");
@@ -476,7 +483,8 @@ describe('BasePersistence Integration Tests (MongoDB Atlas)', () => {
             console.log(`⚡ Saved 10 documents in ${duration.toFixed(2)}ms`);
             
             //in atlas one insertion may take 500 ms so for 10 it may take 5000 ms or 5 second 
-            assert.ok(duration < 7000, `Took ${duration}ms, expected < 7000ms`);
+             //after test i see it took about 1s in atlas one insertion  for 10 it may take 10000 ms or 10 second 
+            assert.ok(duration < 10000, `Took ${duration}ms, expected < 10000ms`);
         });
 
      it('should save 10 documents in batch (faster)', async () => {
