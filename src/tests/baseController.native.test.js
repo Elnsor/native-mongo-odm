@@ -52,7 +52,7 @@ describe("", () => {
         next = mock.fn();
 
         frameworkConfig.schemaDefaults.optimisticConcurrencyControl=false;
-        frameworkConfig.schemaDefaults.softDocumentDetele=false
+        frameworkConfig.schemaDefaults.softDocumentDelete=false
 
 
 
@@ -125,7 +125,7 @@ describe("", () => {
             assert.equal(res.status.mock.calls[0].arguments[0], 200);
         });
         test("should perform soft delete when soft delete feature is enabled", async () => {
-            frameworkConfig.schemaDefaults.softDocumentDetele = true;
+            frameworkConfig.schemaDefaults.softDocumentDelete = true;
 
             await controller.remove(req, res, next);
 
@@ -191,11 +191,10 @@ describe("", () => {
         test("should forward 404 error if delete target matches zero records", async () => {
 
 
-            collectionObject.deleteOne.mock.mockImplementationOnce(async () => ({
-                deletedCount: 0
-            }));
+            collectionObject.deleteOne.mock.mockImplementation(async () =>  ({ deletedCount: 0 }));
 
             await controller.remove(req, res, next);
+            console.log(req.params.id)
 
             assert.equal(next.mock.calls.length, 1);
             const error = next.mock.calls[0].arguments[0];

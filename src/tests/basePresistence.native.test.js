@@ -10,6 +10,7 @@ import { SchemaBuilder } from '../../src/framework/SchemaBuilder.js';
 import { collectionManager } from '../../src/framework/CollectionManager.js';
 import { BasePersistence } from '../framework/transaction/BasePersistence.js'
 import { AppError } from '../../src/framework/appError.js';
+import { frameworkConfig } from '../config/frameworkConfig.js';
 
 // Class test inhirte BasePersistence
 class TestItemPersistence extends BasePersistence {
@@ -28,8 +29,9 @@ describe('BasePersistence Integration Tests (MongoDB Atlas)', () => {
 
     // preparing test 
     beforeEach(async () => {
-        // 1. الاتصال بـ Atlas
+        //connected to db 
         await connectDb();
+        frameworkConfig.schemaDefaults.softDocumentDelete=true;
 
         // creat collection schem "test_items"
         const builder = new SchemaBuilder("test_items");
@@ -291,7 +293,7 @@ describe('BasePersistence Integration Tests (MongoDB Atlas)', () => {
             testItemId = result.insertedId;
         });
 
-        it('should soft delete a document by default', async () => {
+        it('should soft delete a document by enable soft deleted', async () => {
             const deleteResult = await persistence.delete(
                 { _id: testItemId },
                 { userContext: { role: ["USER"] } }
