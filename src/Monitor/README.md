@@ -1,16 +1,8 @@
-# 📚 README for Monitoring System
 
-## 📍 **Location Recommendation**
-
-Place the README at: **`src/Monitoring/README.md`**
-
-This follows the standard convention where documentation lives alongside the code it describes.
-
+**Version:** 1.0.0  
+**Last Updated:** 2026-09-10  
+**Author:** Framework Core Team
 ---
-
-## 📄 **README.md Content**
-
-```markdown
 # 📊 Monitoring System
 
 A high-performance, production-grade monitoring and observability system built with **Ring Buffer architecture** for ultra-fast event processing, metrics collection, and audit logging.
@@ -24,38 +16,21 @@ The Monitoring System provides comprehensive observability for your application 
 3. **AuditLogger** - Batched audit trail with async persistence
 
 ## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    MonitoringSystem                          │
-│  (Facade - Singleton)                                        │
-└──────┬──────────────────────────────────────┬──────────────┘
-       │                    │                  │
-       ▼                    ▼                  ▼
-┌──────────────┐    ┌──────────────┐   ┌──────────────┐
-│SystemMonitor │    │MetricsCollect│   │ AuditLogger  │
-│ (Ring Buffer)│    │   or         │   │ (Batched)    │
-│              │    │              │   │              │
-│ - 60K events │    │ - Counters   │   │ - Buffer     │
-│ - Lock-free  │    │ - Gauges     │   │ - Auto-flush │
-│ - Batch proc │    │ - Histograms │   │ - File/DB    │
-└──────────────┘    └──────────────┘   └──────────────┘
-```
 ```mermaid
 graph TB
-    A[MonitoringSystem  ] --> B[ (Facade - Singleton) ]
-    B --> C[SystemMonitor (Ring Buffer)]
+    A[MonitoringSystem  ] --> B[ Facade - Singleton ]
+    B --> C[SystemMonitor Ring Buffer]
     B --> D[MetricsCollect]
-    B --> E[ AuditLogger (Batched)  ]
+    B --> E[ AuditLogger Batched  ]
     C --> F[- 60K events
 - Lock-free 
 - Batch proc]
     D --> G[- Counters  
 - Gauges    
 - Histograms]
-    E ---> I [- Buffer    
+    E --> I[- Buffer    
 - Auto-flush
-- File/DB   ]
+- File/DB]
       
     style C fill:#e1f5ff
     style D fill:#fff4e1
@@ -482,6 +457,133 @@ async function login(username, password) {
 }
 ```
 
+# 🛠️ Extending the System: Adding Custom Events and Metrics
+
+To maintain the high performance of the Ring Buffer, the system uses a **decoupled architecture**:
+1. **`EVENT_TYPES`** uses **Numeric IDs** for ultra-fast Ring Buffer insertion.
+2. **`METRIC_NAMES`** uses **String Keys** (dot-notation) for human-readable metric aggregation in the `MetricsCollector`.
+
+Follow these 5 steps to add a new monitored operation (e.g., a new "Cache Invalidation" feature).
+
+### Step 1: Define the Numeric Event Type
+Open `src/Monitoring/constant/eventType.js` and add a unique numeric ID. Group them logically to avoid collisions.
+
+```javascript
+// src/Monitoring/constant/eventType.js
+
+export const EVENT_TYPES = {
+    // ... existing events ...
+
+    // ==========================================
+    // Framework Cache Domain Events (100 - 119)
+    // ==========================================
+    CACHE_INVALIDATE_START: 100,
+    CACHE_INVALIDATE_END: 101,
+    CACHE_MISS: 102,
+};
+```
+
+### Step 2: Define the String Metric Name
+Open `src/Monitoring/constant/metricsName.js` and define the string key using the `[domain].[operation].[type]` convention.
+
+```javascript
+// src/Monitoring/constant/metricsName.js
+
+export const METRIC_NAMES = {
+    // ... existing metrics ...
+
+    // ==========================================
+    // Framework Core: Cache Metrics
+    // ==========================================
+    FRAMEWORK_CACHE_INVALIDATE_COUNT: "framework.cache.invalidate.count", // Counter
+    FRAMEWORK_CACHE_INVALIDATE_DURATION: "framework.cache.invalidate.duration", // Histogram
+    FRAMEWORK_CACHE_MISS_TOTAL: "framework.cache.miss.total", // Counter
+};
+```
+
+### Step 3: Register the Handler (The Bridge)
+You must tell the `MonitoringSystem` how to map the **Numeric Event Type** to the **String Metric Name**. Do this during your application initialization (e.g., in `app.js` or `server.js`).
+
+```javascript
+// src/app.js (or your initialization file)
+import { getMonitoring } from './Monitoring/monitoringSystem.js';
+import { EVENT_TYPES, EVENT_MTYPES } from './Monitoring/constant/eventType.js';
+import { METRIC_NAMES } from './Monitoring/constant/metricsName.js';
+
+const monitoring = getMonitoring();
+
+// 1. Map CACHE_INVALIDATE_START (Numeric) to the Counter (String)
+monitoring.registerHandler(
+    EVENT_TYPES.CACHE_INVALIDATE_START, 
+    EVENT_MTYPES.METRIC_C, 
+    (data, collector) => {
+        collector.increment(METRIC_NAMES.FRAMEWORK_CACHE_INVALIDATE_COUNT);
+    }
+);
+
+// 2. Map CACHE_INVALIDATE_END (Numeric) to the Histogram (String)
+monitoring.registerHandler(
+    EVENT_TYPES.CACHE_INVALIDATE_END, 
+    EVENT_MTYPES.METRIC_H, 
+    (data, collector) => {
+        // data.v1 contains the duration passed from record()
+        collector.observeHistogram(METRIC_NAMES.FRAMEWORK_CACHE_INVALIDATE_DURATION, data.v1, {}, 'ms');
+    }
+);
+```
+
+### Step 4: Emit the Event in Your Code
+Now, use the `record()` helper in your actual business logic. It is extremely lightweight and non-blocking.
+
+```javascript
+// src/framework/cacheManager.js
+import { record, auditLog } from '../Monitoring/monitoringSystem.js';
+import { EVENT_TYPES, EVENT_MTYPES, DOMAIN } from '../Monitoring/constant/eventType.js';
+
+export async function invalidateCache(key) {
+    const start = performance.now();
+
+    // 1. Emit Start Event (Counter)
+    record(DOMAIN.FRAMEWORK_DOMAIN, EVENT_TYPES.CACHE_INVALIDATE_START, EVENT_MTYPES.METRIC_C);
+
+    try {
+        // ... your heavy cache invalidation logic ...
+        await db.collection('cache').deleteOne({ key });
+        
+        // Optional: Record an Audit Log for sensitive operations
+        auditLog(
+            DOMAIN.FRAMEWORK_DOMAIN,
+            'cache_invalidate',
+            { userId: 'system' },
+            { cacheKey: key },
+            'success'
+        );
+    } catch (error) {
+        // Handle error...
+    } finally {
+        // 2. Emit End Event (Histogram)
+        const duration = performance.now() - start;
+        record(DOMAIN.FRAMEWORK_DOMAIN, EVENT_TYPES.CACHE_INVALIDATE_END, EVENT_MTYPES.METRIC_H, duration);
+    }
+}
+```
+
+### Step 5: Configure Domain Toggling (Optional)
+If you want the ability to turn off these specific metrics in production without changing code, configure the domain in your initialization:
+
+```javascript
+// Disable metrics for the 'framework' domain, but keep audit logs enabled
+setDomainConfig('framework', false, true); 
+```
+
+---
+
+### 💡 Best Practices for Naming
+* **Counters:** End with `.total`, `.count`, `.errors`, or `.denied`.
+* **Histograms:** End with `.duration`, `.latency`, or `.size`.
+* **Gauges:** End with `.current`, `.active`, or `.queue_size`.
+* **Always use snake_case or kebab-case** for the metric string keys to ensure compatibility with Prometheus/Grafana if you export them later.
+---
 ## 📚 Related Documentation
 
 - [EventType Reference](./constant/eventType.js)
@@ -501,49 +603,9 @@ async function login(username, password) {
 
 Part of Framework Core - Internal Use Only
 
----
 
-**Version:** 1.0.0  
-**Last Updated:** 2026-09-10  
-**Author:** Framework Core Team
-```
 
----
 
-## 📝 **Commit Message**
-
-```bash
-feat(monitoring): add comprehensive monitoring system with ring buffer architecture
-
-- Implement SystemMonitor with lock-free Ring Buffer (Int32Array) for 60K event capacity
-- Add MetricsCollector supporting Counters, Gauges, and Histograms with percentiles
-- Integrate AuditLogger with batched async persistence (configurable buffer & flush)
-- Create MonitoringSystem facade as Singleton for centralized observability
-- Define EVENT_TYPES for RBAC domain (auth, compilation, buffer, lifecycle, maintenance)
-- Add METRIC_NAMES for standardized metric naming (dot.notation convention)
-- Support domain-based configuration (enable/disable per domain)
-- Implement custom event handlers registration for extensibility
-- Add health status monitoring and metrics snapshot capabilities
-- Provide graceful shutdown with flushSyncAsync for testing
-- Include comprehensive documentation with examples and API reference
-
-Performance Features:
-- O(1) enqueue/dequeue operations
-- Batch processing (500 events/100ms)
-- Zero GC pressure with typed arrays
-- Non-blocking async audit logging
-
-BREAKING CHANGE: None (new feature)
-```
-
----
-
-## 📍 **Where to Place**
-
-Create the file at:
-```
-src/Monitoring/README.md
-```
 
 This follows the convention where documentation lives alongside the code it describes, making it easy for developers to find.
 
