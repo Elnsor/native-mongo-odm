@@ -38,6 +38,11 @@ jobs:
             - { name: "Security Role Engine ", file: "securityRoleEngin.native.test.js", report: "security-role-engine-report.xml" }
             - { name: "Schema Builder Object ", file: "schemaBuilder.native.test.js", report: "schema-builder-object-report.xml" }
             - { name: "Atomic Transaction ", file: "basePresistence.native.test.js", report: "base-presistence-transaction-report.xml" }
+            - { name: "Metrics Collector ", file: "metricsCollector.native.test.js", report: "metrics-collector-report.xml" }
+            - { name: "System Monitoring ", file: "systemMonitor.native.test.js", report: "system-monitor-report.xml" }
+            - { name: "Montioring System ", file: "monitoringSystem.native.test.js", report: "monitoring-system.xml" }
+
+            
 
     name: Test - ${{ matrix.test.name }}
     steps:
