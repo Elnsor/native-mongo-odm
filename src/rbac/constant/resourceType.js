@@ -1,0 +1,768 @@
+/**
+ * Universal System Taxonomy Identifiers (Type IDs)
+ * each resource have its id
+ * rang 0..1000
+ */
+
+
+
+
+/**
+ * its contain power the use as 2 power of 
+ */
+export const SIZE_POWER = {
+    WILDCARD: 32, // Starts at 8-bit (0..255)
+    PATHS_BUFFER_SIZE:8
+};
+
+/**[1byte roleId , 1Byte parent instanse index ,4 byte Child] */
+/**[[1 byte roleId , 1 Byte parent instanse index ,1 byte Child],4byte grand child] */
+
+export const STRIDER_SIZES = {
+    PARENT: 1,
+    NESTED: 1,
+    CHILD: 4,
+    TAGGED:1,
+    MEMBER:1,
+    PATHS_BUFFER_SIZE: 1024,
+    
+    // Dynamic max index boundary
+    get WILDCARD_INDEX() {
+        return (2 ** SIZE_POWER.WILDCARD) - 1;
+    },
+    get PATHS_BUFFER_SIZE(){
+        return 2**SIZE_POWER.PATHS_BUFFER_SIZE
+    },
+
+    // Dynamic Element Byte Size (1 byte for Uint8, 2 bytes for Uint16)
+    get WILDCARD_BYTE_SIZE() {
+        return SIZE_POWER.WILDCARD <= 8 ? 8 : (SIZE_POWER.WILDCARD <= 16? 16 : 32);
+    },
+
+    // Returns the correct TypedArray constructor automatically based on SIZE_POWER
+    get WILDCARD_ARRAY_TYPE() {
+        return SIZE_POWER.WILDCARD <= 8 ? Uint8Array :(SIZE_POWER.WILDCARD <= 16 ? Uint16Array : Uint32Array);
+    }
+};
+
+// ==========================================
+// 1. TYPE IDENTIFIERS (TYPE_IDS)
+// ==========================================
+export const TYPE_IDS = {
+    ROOT: 0,
+
+    // Core structural identity tags
+    ROLE_HEADER_TAG: 50,
+    ROLE_MEMBER_ID:  52,
+    HEADER_TTL_TAG:  51,
+
+    // ==========================================
+    // BLOCK 1: COLLECTIONS DOMAIN (100 - 199)
+    // ==========================================
+    COLLECTIONS: 100,       
+    DOCUMENTS: 101,         
+    SEARCH_INDEXES: 102,    
+    FIELD_METRICS: 103,     
+    VIRTUAL_VIEWS: 104,     
+
+    // ==========================================
+    // BLOCK 2: ROLES DOMAIN (200 - 299)
+    // ==========================================
+    ROLES: 200,             
+    ROLE_MANAGEMENT: 201,   
+
+    // ==========================================
+    // BLOCK 3: DATABASE DOMAIN (300 - 399)
+    // ==========================================
+    DB: 300,                
+
+  // ==========================================
+    // BLOCK 4: TENANCY / ORGANIZATION DOMAIN (400 - 499)
+    // ==========================================
+    ORGANIZATION: 400,
+    ORGANIZATION_DASHBOARD: 401,
+    ORGANIZATION_PROFILE: 402,
+    ORGANIZATION_BRANCHES: 403,
+    ORGANIZATION_SETTINGS: 404,
+    ORGANIZATION_SECURITY: 409,
+
+    // Sub-resources of ORGANIZATION_DASHBOARD
+    ORGANIZATION_DASHBOARD_ANALYTICS: 405,
+    ORGANIZATION_DASHBOARD_BRANCHES_SUMMARY: 406,
+    ORGANIZATION_DASHBOARD_TEAM_ACTIVITY: 407,
+    ORGANIZATION_DASHBOARD_SUBSCRIPTION: 408,
+
+    // Sub-resources of ORGANIZATION_SECURITY
+    ORGANIZATION_SECURITY_AUDIT_LOGS: 410,
+    ORGANIZATION_SECURITY_API_KEYS: 411,
+    ORGANIZATION_SECURITY_POLICIES: 412,
+
+    // Team Domain
+    ORGANIZATION_TEAM: 413,
+    ORGANIZATION_TEAM_MEMBERS: 414,
+    ORGANIZATION_TEAM_ROLES: 415,
+
+    // Products / Catalog Domain
+    ORGANIZATION_PRODUCTS: 416,
+    ORGANIZATION_PRODUCTS_LIST: 417,
+    ORGANIZATION_PRODUCTS_CREATE: 418,
+
+    // Orders Domain
+    ORGANIZATION_ORDERS: 419,
+    ORGANIZATION_ORDERS_LIST: 420,
+    ORGANIZATION_ORDERS_FULFILL: 421,
+
+// (Enterprise Finance)
+    ORGANIZATION_FINANCE: 422,
+    ORGANIZATION_FINANCE_WALLET: 423,     
+    ORGANIZATION_FINANCE_INVOICES: 424,   
+    ORGANIZATION_FINANCE_PAYOUTS: 425,    
+
+    // (CRM & B2B Clients) Customers
+    ORGANIZATION_CUSTOMERS: 426,
+    ORGANIZATION_CUSTOMERS_LIST: 427,      // customer papers
+    ORGANIZATION_CUSTOMERS_CONTRACTS: 428, // customer contract
+
+    // (Support & CRM)
+    ORGANIZATION_SUPPORT: 429,
+    ORGANIZATION_SUPPORT_TICKETS: 430, // support Tictes
+
+    // (Integrations & Webhooks)
+    ORGANIZATION_INTEGRATIONS: 431,
+    ORGANIZATION_INTEGRATIONS_CONFIG: 432  ,// payment gates and shipping 
+
+    // ==========================================
+    // BLOCK 5: API KEYS & CREDENTIALS (500 - 599)
+    // ==========================================
+    API_KEYS: 500,          
+    KEY_POLICIES: 501,      
+
+    // ==========================================
+    // BLOCK 6: FILE STORAGE DOMAIN (600 - 699)
+    // ==========================================
+    STORAGE: 600,           
+    FILES: 601,  
+
+    // ==========================================
+    // BLOCK 7: USERS & ENTERPRISE MANAGEMENT DOMAIN (700 - 799)
+    // ==========================================
+    USERS: 700,             
+    PROFILES: 701,          
+    STORES: 702,            
+    ENTERPRISES: 703,       
+    TEAMS: 704,             
+    STORE_HOUSE: 705,       
+    PAGE_BUY: 706,
+    PAGE_SETTING: 707,
+    PAGE_NOTIFICATION: 708,
+    PAGE_MARKET: 709,
+    VERIFICATION_DOCS: 710, 
+    BUSINESS_INVITES: 711,  
+    PRODUCTS: 712,          
+    INQUIRIES: 713,         
+    PRODUCT_REVIEWS: 714,  
+
+    // ==========================================
+    // BLOCK 8: COMMERCE & MARKETPLACE DOMAIN (800 - 899)
+    // ==========================================
+    CATEGORIES: 800,          
+    SUPPLIERS_DIRECTORY: 801, 
+
+    // ==========================================
+    // BLOCK 9: ADMIN CONTROL DOMAIN (900 - 999)
+    // ==========================================
+    ADMIN_VERIFICATIONS: 900,  
+    ADMIN_PLATFORM_METRICS: 901 ,
+
+    DASHBOARDS:1000,
+    DASHBOARD_METRICS:1001,
+    DASHBOARD_ORDERS_SUMMARY:1002,
+    DASHBOARD_WALLET_BALANCE:1003,
+    DASHBOARD_ACTIVITY_TICKETS:1004,
+
+    ACCOUNTS : 1100,
+    ACCOUNTS_PROFILE:1101,
+    ACCOUNTS_PRIVACY:1102,
+    ACCOUNTS_SECURITY:1103,
+    ACCOUNTS_NOTIFICATION:1104,
+    
+    ORDERS:1200,
+    ORDERS_LIST:1201,
+    ORDERS_DETAILS:1202,
+
+    ADDRESSES: 1300,
+    ADDRESSES_LIST:1301,
+    ADDRESSES_ITEMS:1302,
+
+    FINANCE:1400,
+    FINANCE_PAYMENT:1401,
+    FINANCE_WALLET:1402,
+
+    WISHLIST:1500,
+    WISHLIST_LIST:1501,
+    WISHLIST_ITEMS:1502,
+
+    SYSTEM_SUPPORT:1600,
+    SYSTEM_SUPPORT_TICKETS:1601,
+    SYSTEM_SUPPORT_REPLY:1602,
+
+
+
+
+};
+
+// ==========================================
+// 2. TYPE ID TAGS (TYPE_ID_TAG)
+// ID + 9900 Mapping Strategy
+// ==========================================
+export const TYPE_ID_TAG = {
+    [TYPE_IDS.COLLECTIONS]: 10000,
+    [TYPE_IDS.DOCUMENTS]: 10001,
+    [TYPE_IDS.SEARCH_INDEXES]: 10002,
+    [TYPE_IDS.FIELD_METRICS]: 10003,
+    [TYPE_IDS.VIRTUAL_VIEWS]: 10004,
+
+    [TYPE_IDS.ROLES]: 10100,
+    [TYPE_IDS.ROLE_MANAGEMENT]: 10101,
+
+    [TYPE_IDS.DB]: 10200,
+
+   // Base Tags
+    [TYPE_IDS.ORGANIZATION]: 10300,
+    [TYPE_IDS.ORGANIZATION_DASHBOARD]: 10301,
+    [TYPE_IDS.ORGANIZATION_PROFILE]: 10302,
+    [TYPE_IDS.ORGANIZATION_BRANCHES]: 10303,
+    [TYPE_IDS.ORGANIZATION_SETTINGS]: 10304,
+    [TYPE_IDS.ORGANIZATION_SECURITY]: 10309,
+
+    // Dashboard Sub-resources
+    [TYPE_IDS.ORGANIZATION_DASHBOARD_ANALYTICS]: 10305,
+    [TYPE_IDS.ORGANIZATION_DASHBOARD_BRANCHES_SUMMARY]: 10306,
+    [TYPE_IDS.ORGANIZATION_DASHBOARD_TEAM_ACTIVITY]: 10307,
+    [TYPE_IDS.ORGANIZATION_DASHBOARD_SUBSCRIPTION]: 10308,
+
+    // Security Sub-resources
+    [TYPE_IDS.ORGANIZATION_SECURITY_AUDIT_LOGS]: 10310,
+    [TYPE_IDS.ORGANIZATION_SECURITY_API_KEYS]: 10311,
+    [TYPE_IDS.ORGANIZATION_SECURITY_POLICIES]: 10312,
+
+    // Team, Products & Orders Tags
+    [TYPE_IDS.ORGANIZATION_TEAM]: 10313,
+    [TYPE_IDS.ORGANIZATION_TEAM_MEMBERS]: 10314,
+    [TYPE_IDS.ORGANIZATION_TEAM_ROLES]: 10315,
+    [TYPE_IDS.ORGANIZATION_PRODUCTS]: 10316,
+    [TYPE_IDS.ORGANIZATION_PRODUCTS_LIST]: 10317,
+    [TYPE_IDS.ORGANIZATION_PRODUCTS_CREATE]: 10318,
+    [TYPE_IDS.ORGANIZATION_ORDERS]: 10319,
+    [TYPE_IDS.ORGANIZATION_ORDERS_LIST]: 10320,
+    [TYPE_IDS.ORGANIZATION_ORDERS_FULFILL]: 10321,
+
+    // New Additions Tags
+    [TYPE_IDS.ORGANIZATION_FINANCE]: 10322,
+    [TYPE_IDS.ORGANIZATION_FINANCE_WALLET]: 10323,
+    [TYPE_IDS.ORGANIZATION_FINANCE_INVOICES]: 10324,
+    [TYPE_IDS.ORGANIZATION_FINANCE_PAYOUTS]: 10325,
+
+    [TYPE_IDS.ORGANIZATION_CUSTOMERS]: 10326,
+    [TYPE_IDS.ORGANIZATION_CUSTOMERS_LIST]: 10327,
+    [TYPE_IDS.ORGANIZATION_CUSTOMERS_CONTRACTS]: 10328,
+
+    [TYPE_IDS.ORGANIZATION_SUPPORT]: 10329,
+    [TYPE_IDS.ORGANIZATION_SUPPORT_TICKETS]: 10330,
+
+    [TYPE_IDS.ORGANIZATION_INTEGRATIONS]: 10331,
+    [TYPE_IDS.ORGANIZATION_INTEGRATIONS_CONFIG]: 10332,
+
+    [TYPE_IDS.API_KEYS]: 10400,
+    [TYPE_IDS.KEY_POLICIES]: 10401,
+
+    [TYPE_IDS.STORAGE]: 10500,
+    [TYPE_IDS.FILES]: 10501,
+
+    [TYPE_IDS.USERS]: 10600,      
+    [TYPE_IDS.PROFILES]: 10601,   
+    [TYPE_IDS.STORES]: 10602,     
+    [TYPE_IDS.ENTERPRISES]: 10603,
+    [TYPE_IDS.TEAMS]: 10604,   
+    [TYPE_IDS.STORE_HOUSE]: 10605,
+    [TYPE_IDS.PAGE_BUY]: 10606,
+    [TYPE_IDS.PAGE_SETTING]: 10607,
+    [TYPE_IDS.PAGE_NOTIFICATION]: 10608,
+    [TYPE_IDS.PAGE_MARKET]: 10609,
+    [TYPE_IDS.VERIFICATION_DOCS]: 10610,
+    [TYPE_IDS.BUSINESS_INVITES]: 10611,
+    [TYPE_IDS.PRODUCTS]: 10612,
+    [TYPE_IDS.INQUIRIES]: 10613,
+    [TYPE_IDS.PRODUCT_REVIEWS]: 10614,
+
+    [TYPE_IDS.CATEGORIES]: 10700,
+    [TYPE_IDS.SUPPLIERS_DIRECTORY]: 10701,
+
+    [TYPE_IDS.ADMIN_VERIFICATIONS]: 10800,
+    [TYPE_IDS.ADMIN_PLATFORM_METRICS]: 10801,
+
+    [TYPE_IDS.DASHBOARDS]:10900,
+    [TYPE_IDS.DASHBOARD_METRICS]:10901,
+    [TYPE_IDS.DASHBOARD_ORDERS_SUMMARY]:10902,
+    [TYPE_IDS.DASHBOARD_WALLET_BALANCE]:10903,
+    [TYPE_IDS.DASHBOARD_ACTIVITY_TICKETS]:10904,
+
+   [TYPE_IDS.ACCOUNTS ]: 11000,
+   [TYPE_IDS.ACCOUNTS_PROFILE]:11001,
+   [TYPE_IDS.ACCOUNTS_PRIVACY]:11002,
+   [TYPE_IDS.ACCOUNTS_SECURITY]:11003,
+   [TYPE_IDS.ACCOUNTS_NOTIFICATION]:11004,
+
+    [TYPE_IDS.ORDERS]:11100,
+    [TYPE_IDS.ORDERS_LIST]:11101,
+    [TYPE_IDS.ORDERS_DETAILS]:11102,
+
+    [TYPE_IDS.ADDRESSES]: 11200,
+    [TYPE_IDS.ADDRESSES_LIST]:11201,
+    [TYPE_IDS.ADDRESSES_ITEMS]:11202,
+
+    [TYPE_IDS.FINANCE]:11300,
+    [TYPE_IDS.FINANCE_PAYMENT]:11301,
+    [TYPE_IDS.FINANCE_WALLET]:11302,
+
+    [TYPE_IDS.WISHLIST]:11400,
+    [TYPE_IDS.WISHLIST_LIST]:11401,
+    [TYPE_IDS.WISHLIST_ITEMS]:11402,
+
+    [TYPE_IDS.SYSTEM_SUPPORT]:11500,
+    [TYPE_IDS.SYSTEM_SUPPORT_TICKETS]:11501,
+    [TYPE_IDS.SYSTEM_SUPPORT_REPLY]:11502,
+};
+
+// ==========================================
+// 3. RESOURCE HIERARCHY TREE (RESOURCES_CHILD)
+// ==========================================
+export const RESOURCES_CHILD = {
+    // Multi-tenant level
+    [TYPE_IDS.ORGANIZATIONS]: new Set([TYPE_IDS.DB, TYPE_IDS.ROLES]),
+
+    // Database level
+    [TYPE_IDS.DB]: new Set([TYPE_IDS.COLLECTIONS]),
+
+    // Collections level
+    [TYPE_IDS.COLLECTIONS]: new Set([TYPE_IDS.DOCUMENTS, TYPE_IDS.SEARCH_INDEXES, TYPE_IDS.VIRTUAL_VIEWS]),
+    [TYPE_IDS.SEARCH_INDEXES]: new Set([TYPE_IDS.FIELD_METRICS]),
+    [TYPE_IDS.DOCUMENTS]: null,
+    [TYPE_IDS.VIRTUAL_VIEWS]: new Set([TYPE_IDS.DOCUMENTS]),
+    [TYPE_IDS.FIELD_METRICS]: null,
+
+    // Roles level
+    [TYPE_IDS.ROLES]: new Set([TYPE_IDS.ROLE_MANAGEMENT]),
+    [TYPE_IDS.ROLE_MANAGEMENT]: null,
+
+
+    // Root Parent
+    [TYPE_IDS.ORGANIZATION]: new Set([
+        TYPE_IDS.ORGANIZATION_DASHBOARD,
+        TYPE_IDS.ORGANIZATION_PROFILE,
+        TYPE_IDS.ORGANIZATION_BRANCHES,
+        TYPE_IDS.ORGANIZATION_SETTINGS,
+        TYPE_IDS.ORGANIZATION_SECURITY,
+        TYPE_IDS.ORGANIZATION_TEAM,
+        TYPE_IDS.ORGANIZATION_PRODUCTS,
+        TYPE_IDS.ORGANIZATION_ORDERS,
+        TYPE_IDS.ORGANIZATION_FINANCE,      
+        TYPE_IDS.ORGANIZATION_CUSTOMERS,    
+        TYPE_IDS.ORGANIZATION_SUPPORT,      
+        TYPE_IDS.ORGANIZATION_INTEGRATIONS  
+    ]),
+
+    // Mid-Level Parents
+    [TYPE_IDS.ORGANIZATION_DASHBOARD]: new Set([
+        TYPE_IDS.ORGANIZATION_DASHBOARD_ANALYTICS,
+        TYPE_IDS.ORGANIZATION_DASHBOARD_BRANCHES_SUMMARY,
+        TYPE_IDS.ORGANIZATION_DASHBOARD_TEAM_ACTIVITY,
+        TYPE_IDS.ORGANIZATION_DASHBOARD_SUBSCRIPTION
+    ]),
+
+    [TYPE_IDS.ORGANIZATION_SECURITY]: new Set([
+        TYPE_IDS.ORGANIZATION_SECURITY_AUDIT_LOGS,
+        TYPE_IDS.ORGANIZATION_SECURITY_API_KEYS,
+        TYPE_IDS.ORGANIZATION_SECURITY_POLICIES
+    ]),
+
+    [TYPE_IDS.ORGANIZATION_TEAM]: new Set([
+        TYPE_IDS.ORGANIZATION_TEAM_MEMBERS,
+        TYPE_IDS.ORGANIZATION_TEAM_ROLES
+    ]),
+
+    [TYPE_IDS.ORGANIZATION_PRODUCTS]: new Set([
+        TYPE_IDS.ORGANIZATION_PRODUCTS_LIST,
+        TYPE_IDS.ORGANIZATION_PRODUCTS_CREATE
+    ]),
+
+    [TYPE_IDS.ORGANIZATION_ORDERS]: new Set([
+        TYPE_IDS.ORGANIZATION_ORDERS_LIST,
+        TYPE_IDS.ORGANIZATION_ORDERS_FULFILL
+    ]),
+
+    [TYPE_IDS.ORGANIZATION_FINANCE]: new Set([
+        TYPE_IDS.ORGANIZATION_FINANCE_WALLET,
+        TYPE_IDS.ORGANIZATION_FINANCE_INVOICES,
+        TYPE_IDS.ORGANIZATION_FINANCE_PAYOUTS
+    ]),
+
+    [TYPE_IDS.ORGANIZATION_CUSTOMERS]: new Set([
+        TYPE_IDS.ORGANIZATION_CUSTOMERS_LIST,
+        TYPE_IDS.ORGANIZATION_CUSTOMERS_CONTRACTS
+    ]),
+
+    [TYPE_IDS.ORGANIZATION_SUPPORT]: new Set([
+        TYPE_IDS.ORGANIZATION_SUPPORT_TICKETS
+    ]),
+
+    [TYPE_IDS.ORGANIZATION_INTEGRATIONS]: new Set([
+        TYPE_IDS.ORGANIZATION_INTEGRATIONS_CONFIG
+    ]),
+
+    // Terminal Leaf Nodes
+    [TYPE_IDS.ORGANIZATION_PROFILE]: null,
+    [TYPE_IDS.ORGANIZATION_BRANCHES]: null,
+    [TYPE_IDS.ORGANIZATION_SETTINGS]: null,
+    [TYPE_IDS.ORGANIZATION_DASHBOARD_ANALYTICS]: null,
+    [TYPE_IDS.ORGANIZATION_DASHBOARD_BRANCHES_SUMMARY]: null,
+    [TYPE_IDS.ORGANIZATION_DASHBOARD_TEAM_ACTIVITY]: null,
+    [TYPE_IDS.ORGANIZATION_DASHBOARD_SUBSCRIPTION]: null,
+    [TYPE_IDS.ORGANIZATION_SECURITY_AUDIT_LOGS]: null,
+    [TYPE_IDS.ORGANIZATION_SECURITY_API_KEYS]: null,
+    [TYPE_IDS.ORGANIZATION_SECURITY_POLICIES]: null,
+    [TYPE_IDS.ORGANIZATION_TEAM_MEMBERS]: null,
+    [TYPE_IDS.ORGANIZATION_TEAM_ROLES]: null,
+    [TYPE_IDS.ORGANIZATION_PRODUCTS_LIST]: null,
+    [TYPE_IDS.ORGANIZATION_PRODUCTS_CREATE]: null,
+    [TYPE_IDS.ORGANIZATION_ORDERS_LIST]: null,
+    [TYPE_IDS.ORGANIZATION_ORDERS_FULFILL]: null,
+    [TYPE_IDS.ORGANIZATION_FINANCE_WALLET]: null,
+    [TYPE_IDS.ORGANIZATION_FINANCE_INVOICES]: null,
+    [TYPE_IDS.ORGANIZATION_FINANCE_PAYOUTS]: null,
+    [TYPE_IDS.ORGANIZATION_CUSTOMERS_LIST]: null,
+    [TYPE_IDS.ORGANIZATION_CUSTOMERS_CONTRACTS]: null,
+    [TYPE_IDS.ORGANIZATION_SUPPORT_TICKETS]: null,
+    [TYPE_IDS.ORGANIZATION_INTEGRATIONS_CONFIG]: null,
+    // API Keys level
+    [TYPE_IDS.API_KEYS]: new Set([TYPE_IDS.KEY_POLICIES]),
+    [TYPE_IDS.KEY_POLICIES]: null,
+
+    // Storage level
+    [TYPE_IDS.STORAGE]: new Set([TYPE_IDS.FILES]),
+    [TYPE_IDS.FILES]: null,
+
+    // Users Domain
+    [TYPE_IDS.USERS]: new Set([
+        TYPE_IDS.PAGE_BUY,
+        TYPE_IDS.PAGE_MARKET,
+        TYPE_IDS.PAGE_NOTIFICATION,
+        TYPE_IDS.PAGE_SETTING,
+        TYPE_IDS.PROFILES,
+        TYPE_IDS.STORES,
+        TYPE_IDS.ENTERPRISES
+    ]),
+    [TYPE_IDS.PAGE_BUY]: null,
+    [TYPE_IDS.PAGE_MARKET]: new Set([TYPE_IDS.SUPPLIERS_DIRECTORY]),
+    [TYPE_IDS.PAGE_NOTIFICATION]: null,
+    [TYPE_IDS.PAGE_SETTING]: null,
+    [TYPE_IDS.PROFILES]: null,
+
+    // Enterprise & Store Domain
+    [TYPE_IDS.STORES]: new Set([
+        TYPE_IDS.PRODUCTS, 
+        TYPE_IDS.INQUIRIES, 
+        TYPE_IDS.STORE_HOUSE, 
+        TYPE_IDS.TEAMS, 
+        TYPE_IDS.VERIFICATION_DOCS
+    ]),
+    [TYPE_IDS.ENTERPRISES]: new Set([
+        TYPE_IDS.PRODUCTS, 
+        TYPE_IDS.INQUIRIES, 
+        TYPE_IDS.STORE_HOUSE, 
+        TYPE_IDS.TEAMS, 
+        TYPE_IDS.VERIFICATION_DOCS
+    ]),
+    [TYPE_IDS.TEAMS]: new Set([TYPE_IDS.BUSINESS_INVITES]),
+    [TYPE_IDS.PRODUCTS]: new Set([TYPE_IDS.PRODUCT_REVIEWS]),
+    [TYPE_IDS.PRODUCT_REVIEWS]: null,
+    [TYPE_IDS.STORE_HOUSE]: null,
+    [TYPE_IDS.INQUIRIES]: null,
+    [TYPE_IDS.VERIFICATION_DOCS]: null,
+    [TYPE_IDS.BUSINESS_INVITES]: null,
+
+    // Commerce & Marketplace Domain
+    [TYPE_IDS.CATEGORIES]: new Set([TYPE_IDS.PRODUCTS]),
+    [TYPE_IDS.SUPPLIERS_DIRECTORY]: null,
+
+    // Administration Domain
+    [TYPE_IDS.ADMIN_VERIFICATIONS]: new Set([TYPE_IDS.VERIFICATION_DOCS]),
+    [TYPE_IDS.ADMIN_PLATFORM_METRICS]: null,
+
+    [TYPE_IDS.ACCOUNTS]: new Set([TYPE_IDS.ACCOUNTS_NOTIFICATION,TYPE_IDS.ACCOUNTS_PRIVACY,TYPE_IDS.ACCOUNTS_PROFILE,TYPE_IDS.ACCOUNTS_SECURITY]),
+    [TYPE_IDS.DASHBOARDS]: new Set([TYPE_IDS.DASHBOARD_ACTIVITY_TICKETS,TYPE_IDS.DASHBOARD_METRICS,TYPE_IDS.DASHBOARD_ORDERS_SUMMARY,TYPE_IDS.DASHBOARD_WALLET_BALANCE]),
+    [TYPE_IDS.ADDRESSES]: new Set([TYPE_IDS.ADDRESSES_ITEMS,TYPE_IDS.ADDRESSES_LIST]),
+    [TYPE_IDS.ORDERS]: new Set([TYPE_IDS.ORDERS_DETAILS,TYPE_IDS.ORDERS_LIST]),
+    [TYPE_IDS.FINANCE]: new Set([TYPE_IDS.FINANCE_PAYMENT,TYPE_IDS.FINANCE_WALLET]),
+    [TYPE_IDS.SYSTEM_SUPPORT]: new Set([TYPE_IDS.SYSTEM_SUPPORT_REPLY,TYPE_IDS.SYSTEM_SUPPORT_TICKETS]),
+    [TYPE_IDS.WISHLIST]:new Set([TYPE_IDS.WISHLIST_ITEMS,TYPE_IDS.WISHLIST_LIST]),
+
+    [TYPE_IDS.DASHBOARD_ACTIVITY_TICKETS]: null,
+    [TYPE_IDS.DASHBOARD_METRICS]: null,
+    [TYPE_IDS.DASHBOARD_ORDERS_SUMMARY]: null,
+    [TYPE_IDS.DASHBOARD_WALLET_BALANCE]: null,
+    [TYPE_IDS.ACCOUNTS_NOTIFICATION]: null,
+    [TYPE_IDS.ACCOUNTS_PRIVACY]: null,
+    [TYPE_IDS.ACCOUNTS_PROFILE]: null,
+    [TYPE_IDS.ACCOUNTS_SECURITY]: null,
+    [TYPE_IDS.ORDERS_DETAILS]: null,
+    [TYPE_IDS.ORDERS_LIST]: null,
+    [TYPE_IDS.ADDRESSES_ITEMS]: null,
+    [TYPE_IDS.ADDRESSES_LIST]: null,
+    [TYPE_IDS.FINANCE_PAYMENT]: null,
+    [TYPE_IDS.FINANCE_WALLET]: null,
+    [TYPE_IDS.WISHLIST_ITEMS]: null,
+    [TYPE_IDS.WISHLIST_LIST]: null,
+    [TYPE_IDS.SYSTEM_SUPPORT_REPLY]: null,
+    [TYPE_IDS.SYSTEM_SUPPORT_TICKETS]: null,
+
+};
+
+// ==========================================
+// 1. TYPE IDENTIFIERS (TYPE_IDS)
+// ==========================================
+export const TYPE_IDS_NAME = {
+     0 : "ROOT" ,
+
+    // Core structural identity tags
+     50: "ROLE_HEADER_TAG" ,
+     51: "HEADER_TTL_TAG" ,
+
+    // ==========================================
+    // BLOCK 1: COLLECTIONS DOMAIN (100 - 199)
+    // ==========================================
+     100:"COLLECTIONS"  ,       
+     101:"DOCUMENTS"    ,         
+     102:"SEARCH_INDEXES",    
+     103:"FIELD_METRICS",     
+     104:"VIRTUAL_VIEWS",     
+
+    // ==========================================
+    // BLOCK 2: ROLES DOMAIN (200 - 299)
+    // ==========================================
+    200: "ROLES"           ,             
+    201: "ROLE_MANAGEMENT" ,   
+
+    // ==========================================
+    // BLOCK 3: DATABASE DOMAIN (300 - 399)
+    // ==========================================
+    300:"DB",                
+
+    // ==========================================
+    // BLOCK 4: TENANCY / ORG DOMAIN (400 - 499)
+    // ==========================================
+    // Top-Level / Core
+    400: "ORGANIZATION",
+    401: "ORGANIZATION_DASHBOARD",
+    402: "ORGANIZATION_PROFILE",
+    403: "ORGANIZATION_BRANCHES",
+    404: "ORGANIZATION_SETTINGS",
+    409: "ORGANIZATION_SECURITY",
+
+    // Organization Dashboard Sub-resources
+    405: "ORGANIZATION_DASHBOARD_ANALYTICS",
+    406: "ORGANIZATION_DASHBOARD_BRANCHES_SUMMARY",
+    407: "ORGANIZATION_DASHBOARD_TEAM_ACTIVITY",
+    408: "ORGANIZATION_DASHBOARD_SUBSCRIPTION",
+
+    // Security Sub-resources
+    410: "ORGANIZATION_SECURITY_AUDIT_LOGS",
+    411: "ORGANIZATION_SECURITY_API_KEYS",
+    412: "ORGANIZATION_SECURITY_POLICIES",
+
+    // Team Domain
+    413: "ORGANIZATION_TEAM",
+    414: "ORGANIZATION_TEAM_MEMBERS",
+    415: "ORGANIZATION_TEAM_ROLES",
+
+    // Products / Catalog Domain
+    416: "ORGANIZATION_PRODUCTS",
+    417: "ORGANIZATION_PRODUCTS_LIST",
+    418: "ORGANIZATION_PRODUCTS_CREATE",
+
+    // Orders Domain
+    419: "ORGANIZATION_ORDERS",
+    420: "ORGANIZATION_ORDERS_LIST",
+    421: "ORGANIZATION_ORDERS_FULFILL",
+
+    // Finance Domain
+    422: "ORGANIZATION_FINANCE",
+    423: "ORGANIZATION_FINANCE_WALLET",
+    424: "ORGANIZATION_FINANCE_INVOICES",
+    425: "ORGANIZATION_FINANCE_PAYOUTS",
+
+    // Customers Domain
+    426: "ORGANIZATION_CUSTOMERS",
+    427: "ORGANIZATION_CUSTOMERS_LIST",
+    428: "ORGANIZATION_CUSTOMERS_CONTRACTS",
+
+    // Support Domain
+    429: "ORGANIZATION_SUPPORT",
+    430: "ORGANIZATION_SUPPORT_TICKETS",
+
+    // Integrations Domain
+    431: "ORGANIZATION_INTEGRATIONS",
+    432: "ORGANIZATION_INTEGRATIONS_CONFIG" ,
+
+    // ==========================================
+    // BLOCK 5: API KEYS & CREDENTIALS (500 - 599)
+    // ==========================================
+    500:"API_KEYS",          
+    501: "KEY_POLICIES" ,      
+
+    // ==========================================
+    // BLOCK 6: FILE STORAGE DOMAIN (600 - 699)
+    // ==========================================
+    600:"STORAGE",           
+    601:"FILES",  
+
+    // ==========================================
+    // BLOCK 7: USERS & ENTERPRISE MANAGEMENT DOMAIN (700 - 799)
+    // ==========================================
+    700: "USERS"             ,             
+    701: "PROFILES"          ,          
+    702: "STORES"            ,            
+    703: "ENTERPRISES"       ,       
+    704: "TEAMS"             ,             
+    705: "STORE_HOUSE"       ,       
+    706: "PAGE_BUY"          ,
+    707: "PAGE_SETTING"      ,
+    708: "PAGE_NOTIFICATION" ,
+    709: "PAGE_MARKET"       ,
+    710: "VERIFICATION_DOCS" , 
+    711: "BUSINESS_INVITES"  ,  
+    712: "PRODUCTS"          ,          
+    713: "INQUIRIES"         ,         
+    714: "PRODUCT_REVIEWS"   ,   // 
+
+    // ==========================================
+    // BLOCK 8: COMMERCE & MARKETPLACE DOMAIN (800 - 899)
+    // ==========================================
+    800: "CATEGORIES"             ,          
+    801: "SUPPLIERS_DIRECTORY"    , 
+
+    // ==========================================
+    // BLOCK 9: ADMIN CONTROL DOMAIN (900 - 999)
+    // ==========================================
+    900: "ADMIN_VERIFICATIONS"     ,  
+    901: "ADMIN_PLATFORM_METRICS"   ,
+
+    1000: "DASHBOARDS",
+    1001: "DASHBOARD_METRICS",
+    1002: "DASHBOARD_ORDERS_SUMMARY",
+    1003: "DASHBOARD_WALLET_BALANCE",
+    1004: "DASHBOARD_ACTIVITY_TICKETS",
+
+    // ACCOUNTS DOMAIN
+    1100: "ACCOUNTS",
+    1101: "ACCOUNTS_PROFILE",
+    1102: "ACCOUNTS_PRIVACY",
+    1103: "ACCOUNTS_SECURITY",
+    1104: "ACCOUNTS_NOTIFICATION",
+
+    // ORDERS DOMAIN
+    1200: "ORDERS",
+    1201: "ORDERS_LIST",
+    1202: "ORDERS_DETAILS",
+
+    // ADDRESSES DOMAIN
+    1300: "ADDRESSES",
+    1301: "ADDRESSES_LIST",
+    1302: "ADDRESSES_ITEMS",
+
+    // FINANCE DOMAIN
+    1400: "FINANCE",
+    1401: "FINANCE_PAYMENT",
+    1402: "FINANCE_WALLET",
+
+    // WISHLIST DOMAIN
+    1500: "WISHLIST",
+    1501: "WISHLIST_LIST",
+    1502: "WISHLIST_ITEMS",
+
+    // SYSTEM SUPPORT DOMAIN
+    1600: "SYSTEM_SUPPORT",
+    1601: "SYSTEM_SUPPORT_TICKETS",
+    1602: "SYSTEM_SUPPORT_REPLY"
+};
+
+
+
+export const SYSTEM_STATUS = {
+    SUCCESS: 0,
+
+    // ==========================================
+    // 1. RESOURCE & INSTANCE ERRORS (-10 to -19)
+    // ==========================================
+    INVALID_RESOURCE_PID: -11,
+    RESOURCE_NOT_FOUND:   -12,
+    INSTANCE_NOT_FOUND:   -13,
+    DUPLICATE_INSTANCE:   -14,
+    UNTAGGED_RESOURCE:    -15,
+    INSTANCE_EXIST:       -16,
+    INSTANCE_NOT_ALLOWED: -17,
+    RESOURCES_EMPTY_LIST : -18,
+
+    // ==========================================
+    // 2. ROLE & MEMBERSHIP ERRORS (-20 to -29)
+    // ==========================================
+    ROLE_EXISTS: -21,
+    ROLE_NOT_FOUND: -22,
+    ROLE_MEMBER_EXISTS: -23,
+    INVALID_ROLE_ID: -24,
+    INVALID_GROUP_ROLE: -25,
+    ROLE_CREAT_ERROR:-26,
+
+    // ==========================================
+    // 3. SCHEMA & VALIDATION ERRORS (-30 to -39)
+    // ==========================================
+    INVALID_SCHEMA: -31,
+    INVALID_HIERARCHY: -32,
+    VALIDATION_FAILED: -33,
+    DUPLICATE_SCHEMA_INSTANCE: -34,
+    WILDCARD_WITHE_INSTANCE: -35,
+    WILDCARD_COMPACT_INDEX:-36,
+    CHILD_COMPACT_INDEX:-37,
+    INVALID_LEAF : -38,
+
+    // ==========================================
+    // 4. EXECUTION, BUFFER & ACCESS ERRORS (-40 to -49)
+    // ==========================================
+   "BUFFER_OVERFLOW": -41,
+    ACCESS_DENIED: -42,
+    PERMISSION_EXPIRED: -43,
+    WORKER_NOT_FOUND: -44,
+    UNCOMPILED_WORKER: -45,
+    RECOMPILE_FAILED: -46,
+    ROLE_MISMATCH_INSTANCE:47,
+    UNDEFINED_ADDRESS:-48
+};
+
+export const DEFAULT_ACTIONS = {
+    NONE: 0,
+    READ: 1 << 0,  // 00000001 (Decimal 1) read
+    WRITE: 1 << 1,  // 00000010 (Decimal 2) create
+    UPDATE: 1 << 2,  // 00000100 (Decimal 4) modify
+    DELETE: 1 << 3   // 00001000 (Decimal 8) delete remove
+};
+
+// one byte
+
+export const BOUNDARY = {
+    NONE: 0,
+    OWN: 1 << 4,  // 00000001 (Decimal 16) read
+    LIMITED: 1 << 5,  // 00000010 (Decimal 32) create
+    ALL: 1 << 6,  // 00000100 (Decimal 64) modify
+
+};
+
