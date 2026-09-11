@@ -1,7 +1,7 @@
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert";
 import {MongoMemoryServer} from 'mongodb'
-import { connectDb, getDb, closeDb } from "./db.js"; 
+import { connectDb, getDb, closeDb } from "../config/db.js"; 
 
 describe("MongoDB Connection Integration Tests", () => {
   let mongoServer;
