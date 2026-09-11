@@ -42,6 +42,16 @@ jobs:
             - { name: "System Monitoring ", file: "systemMonitor.native.test.js", report: "system-monitor-report.xml" }
             - { name: "Montioring System ", file: "monitoringSystem.native.test.js", report: "monitoring-system.xml" }
 
+            - { name: "RBAC Authorization Check ", file: "authorization.native.test.js", report: "rbac-authorization-report.xml" }
+            - { name: "RBAC Resource Role Group Manager ", file: "base-manager.native.test.js", report: "rbac-base-manager-report.xml" }
+            - { name: "RBAC Role Compile ", file: "roleCompiler.native.test.js", report: "rbac-role-compile-report.xml" }
+            - { name: "RBAC Buckets ", file: "buckets.native.test.js", report: "rbac-buckets-report.xml" }
+            - { name: "RBAC Resource System Resource Instances ", file: "systemReourcesInstances.native.test.js", report: "rbac-system-resources-instances-report.xml" }
+            - { name: "RBAC Role Binary Allocator ", file: "base-buffer.native.test.js", report: "rbac-role-binary-allocator-report.xml" }
+            - { name: "RBAC Role Binary worker ", file: "binary-worker.nattive.test.js", report: "rbac-role-binary-worker-report.xml" }
+            - { name: "RBAC Managerr ", file: "rbacManager.native.test.js", report: "rbac-manager-report.xml" }
+            - { name: "RBAC Build GroupRole", file: "buildGroupRole.native.test.js", report: "rbac-build-group-role-report.xml" }
+
             
 
     name: Test - ${{ matrix.test.name }}
