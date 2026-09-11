@@ -194,7 +194,7 @@ describe("", () => {
             collectionObject.deleteOne.mock.mockImplementation(async () =>  ({ deletedCount: 0 }));
 
             await controller.remove(req, res, next);
-            console.log(req.params.id)
+           
 
             assert.equal(next.mock.calls.length, 1);
             const error = next.mock.calls[0].arguments[0];
