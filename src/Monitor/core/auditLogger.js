@@ -144,6 +144,7 @@ export class AuditLogger {
             await fs.appendFile(this.#logFilePath, lines + '\n');
         } catch (error) {
             console.error('[AuditLogger] Error writing to file:', error);
+            throw error;
         }
     }
 
