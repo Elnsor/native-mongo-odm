@@ -41,6 +41,7 @@ jobs:
             - { name: "Metrics Collector ", file: "metricsCollector.native.test.js", report: "metrics-collector-report.xml" }
             - { name: "System Monitoring ", file: "systemMonitor.native.test.js", report: "system-monitor-report.xml" }
             - { name: "Montioring System ", file: "monitoringSystem.native.test.js", report: "monitoring-system.xml" }
+            - { name: "AuditLogger  Core System", file: "auditLogger.native.test.js", report: "auditLogger-report.xml" }
 
             - { name: "RBAC Authorization Check ", file: "authorization.native.test.js", report: "rbac-authorization-report.xml" }
             - { name: "RBAC Resource Role Group Manager ", file: "base-manager.native.test.js", report: "rbac-base-manager-report.xml" }
@@ -51,6 +52,7 @@ jobs:
             - { name: "RBAC Role Binary worker ", file: "binary-worker.nattive.test.js", report: "rbac-role-binary-worker-report.xml" }
             - { name: "RBAC Managerr ", file: "rbacManager.native.test.js", report: "rbac-manager-report.xml" }
             - { name: "RBAC Build GroupRole", file: "buildGroupRole.native.test.js", report: "rbac-build-group-role-report.xml" }
+            
 
             
 
