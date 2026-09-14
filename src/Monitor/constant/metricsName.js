@@ -74,18 +74,40 @@ export const METRIC_NAMES = {
     SCHEMA_VALIDATION_TOTAL: "framework.schema.validation.total",
     SCHEMA_VALIDATION_DURATION: "framework.schema.validation.duration",
     SCHEMA_VALIDATION_ERRORS: "framework.schema.validation.errors",
-    
+
     // ==========================================
     // Framework Core: Security Rules Metrics
-    // =======================================…ken.verify.total",
+    // ==========================================
+    SECURITY_EVAL_TOTAL: "framework.security.eval.total",
+    SECURITY_EVAL_DURATION: "framework.security.eval.duration",
+    SECURITY_RULE_BLOCKED: "framework.security.rule.blocked",
+
+    // ==========================================
+    // Framework Core: Auth Token Metrics
+    // ==========================================
+    AUTH_TOKEN_VERIFY_TOTAL: "framework.auth.token.verify.total",
     AUTH_TOKEN_VERIFY_FAILED: "framework.auth.token.verify.failed",
     AUTH_TOKEN_VERIFY_DURATION: "framework.auth.token.verify.duration",
-    
+
     // ==========================================
     // Framework Core: CRUD Operations Metrics
     // ==========================================
     CRUD_OPERATIONS_TOTAL: "framework.crud.operations.total",
     CRUD_OPERATION_DURATION: "framework.crud.operation.duration",
-    CRUD_OPERATIONS_ERROR: "framework.crud.operations.errors"
+    CRUD_OPERATIONS_ERROR: "framework.crud.operations.errors",
+    CRUD_CREATE_TOTAL: "framework.crud.create.total",
+    CRUD_UPDATE_TOTAL: "framework.crud.update.total",
+    CRUD_DELETE_TOTAL: "framework.crud.delete.total",
+    CRUD_BATCH_TOTAL: "framework.crud.batch.total",
+    CRUD_BATCH_DURATION: "framework.crud.batch.duration",
+
+    // ==========================================
+    // Framework Core: Database Operations Metrics
+    // ==========================================
+    DB_QUERY_TOTAL: "framework.db.query.total",
+    DB_QUERY_DURATION: "framework.db.query.duration",
+    DB_TRANSACTION_TOTAL: "framework.db.transaction.total",
+    DB_TRANSACTION_COMMIT: "framework.db.transaction.commit",
+    DB_TRANSACTION_ABORT: "framework.db.transaction.abort"
 };
 

@@ -24,6 +24,10 @@ export class MonitoringSystem {
         database: { metrics: true, audit: true }
     };
 
+    #labelRegistry = new Map();   // Maps String -> Numeric ID
+    #labelReverse = new Map();    // Maps Numeric ID -> String
+    #nextLabelId = 1;
+
     constructor() {
         if (MonitoringSystem.#instance) return MonitoringSystem.#instance;
         this.#monitor = SystemMonitor.getInstance();
@@ -76,6 +80,39 @@ export class MonitoringSystem {
         }
         return this;
     }
+
+      /**
+     * HIGH-PERFORMANCE LABEL REGISTRY
+     * Registers a string label and returns a unique numeric ID.
+     * If the string already exists, it returns the existing ID (O(1) lookup).
+     * if we need to add label to metrics name we must rigester the name stringe and got id 
+     * then when mertircs hanlder run can reead id for its data.v and get name then adding label to its metrics name 
+     * @param {string} label 
+     * @returns {number}
+     */
+    registerLabel(label) {
+        if (typeof label !== 'string') return 0;
+        
+        let id = this.#labelRegistry.get(label);
+        if (id) return id; // Fast path: already registered
+
+        id = this.#nextLabelId++;
+        this.#labelRegistry.set(label, id);
+        this.#labelReverse.set(id, label);
+        return id;
+    }
+
+    /**
+     * Resolves a numeric ID back to its string label.
+     * Used by the MetricsCollector handlers.
+     * @param {number} id 
+     * @returns {string} is rigestry not have id its retrun unknown
+     */
+    getLabel(id) {
+        return this.#labelReverse.get(id) || 'unknown';
+    }
+
+    // ... rest of your class ...
 
     /**
      * 
