@@ -80,7 +80,7 @@ class SecurityRulesEngine {
             const fieldName = blueprintkey[i];
             const fieldDefinition = schemaBlueprint[fieldName];
             const appRoles = fieldDefinition.appRoles;
-    //console.log("-------------",fieldDefinition)
+   
             // Skip container objects; evaluate leaf properties directly
             if (fieldDefinition.mongoRoles?.bsonType === 'object') {
                 continue;

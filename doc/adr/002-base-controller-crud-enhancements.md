@@ -1,7 +1,3 @@
-Here is the Architecture Decision Record (ADR) documenting the changes made to the `BaseController.js` file, written in standard professional English.
-
----
-
 # ADR-002: Implement Optimistic Concurrency Control, Soft Deletion, and Projection in BaseController
 
 - **Status:** Accepted

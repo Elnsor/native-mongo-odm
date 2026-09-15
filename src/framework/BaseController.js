@@ -70,9 +70,7 @@ export class BaseController{
     
     const collection=this.getCollNameFromReq(req);
 
-    if(!ObjectId.isValid(req.params.id)){
-        return next(new AppError("input must be a 24 character hex string, 12 byte Uint8Array, or an integer",400));
-    }
+   
     const queryFilterd= {};
 
         if(frameworkConfig.schemaDefaults.softDocumentDelete){

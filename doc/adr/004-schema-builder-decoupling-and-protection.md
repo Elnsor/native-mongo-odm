@@ -1,7 +1,3 @@
-Here is the Architecture Decision Record (ADR) documenting the significant refactoring of the `Schema` and `SchemaBuilder` classes, written in standard professional English.
-
----
-
 # ADR-004: Decouple Application Roles from MongoDB Validation and Enforce System Keyword Protection in Schema Builder
 
 - **Status:** Accepted

@@ -66,7 +66,7 @@ class UserService {
             );
         }
 
-        // 4. Business Rule: check its new user that not exist in users data collection 
+        // Business Rule: check its new user that not exist in users data collection 
         await this.checkEmailExists(validatedBody.accountInfo.email);
 
         // Business Rule:  generate salt used for hashed passward
@@ -95,7 +95,7 @@ class UserService {
         // insert user document to users collection in db 
         const result = await this.userCollection.insertOne(securedDoc);
 
-        // generate token 
+        // generate token one method 
         const token = this.generateToken({
             _id: result.insertedId,
             accountInfo: securedDoc.accountInfo

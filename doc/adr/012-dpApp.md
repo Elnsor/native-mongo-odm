@@ -1,4 +1,3 @@
-Here is the Architecture Decision Record (ADR) and the corresponding brief Git commit message for the new `dbApp` class.
 
 # ADR-012: Implementation of `dbApp` Singleton Facade for Framework Lifecycle and Initialization
 
@@ -43,16 +42,3 @@ Key architectural decisions include:
 
 ---
 
-### 💻 Brief Git Commit Message
-
-```text
-feat(core): introduce dbApp singleton facade for framework lifecycle
-
-Adds a unified entry point (`dbApp`) to manage database connection, 
-schema registration, and boot synchronization. Enforces a strict 
-initialization lifecycle (configure -> start) and encapsulates 
-internal managers to prevent direct, unsafe manipulation of the 
-framework's state.
-
-Ref: docs/adr/014-dbapp-singleton-facade.md
-```
