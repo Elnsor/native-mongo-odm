@@ -1,8 +1,13 @@
+# 📚 README for Monitoring System
+
+---
 
 **Version:** 1.0.0  
 **Last Updated:** 2026-09-10  
 **Author:** Framework Core Team
+
 ---
+
 # 📊 Monitoring System
 
 A high-performance, production-grade monitoring and observability system built with **Ring Buffer architecture** for ultra-fast event processing, metrics collection, and audit logging.
@@ -15,22 +20,22 @@ The Monitoring System provides comprehensive observability for your application 
 2. **MetricsCollector** - Prometheus-style metrics (Counters, Gauges, Histograms)
 3. **AuditLogger** - Batched audit trail with async persistence
 
-## 🏗️ Architecture
+
 ```mermaid
 graph TB
-    A[MonitoringSystem  ] --> B[ Facade - Singleton ]
-    B --> C[SystemMonitor Ring Buffer]
+    A[MonitoringSystem  ] --> B[ (Facade - Singleton) ]
+    B --> C[SystemMonitor (Ring Buffer)]
     B --> D[MetricsCollect]
-    B --> E[ AuditLogger Batched  ]
+    B --> E[ AuditLogger (Batched)  ]
     C --> F[- 60K events
 - Lock-free 
 - Batch proc]
     D --> G[- Counters  
 - Gauges    
 - Histograms]
-    E --> I[- Buffer    
+    E ---> I [- Buffer    
 - Auto-flush
-- File/DB]
+- File/DB   ]
       
     style C fill:#e1f5ff
     style D fill:#fff4e1
@@ -457,7 +462,11 @@ async function login(username, password) {
 }
 ```
 
-# 🛠️ Extending the System: Adding Custom Events and Metrics
+Here is the new section to add to your `src/Monitoring/README.md`. It provides a clear, step-by-step guide on how to extend the system by defining new Event Types and Metric Names.
+
+---
+
+## 🛠️ Extending the System: Adding Custom Events and Metrics
 
 To maintain the high performance of the Ring Buffer, the system uses a **decoupled architecture**:
 1. **`EVENT_TYPES`** uses **Numeric IDs** for ultra-fast Ring Buffer insertion.
@@ -583,7 +592,7 @@ setDomainConfig('framework', false, true);
 * **Histograms:** End with `.duration`, `.latency`, or `.size`.
 * **Gauges:** End with `.current`, `.active`, or `.queue_size`.
 * **Always use snake_case or kebab-case** for the metric string keys to ensure compatibility with Prometheus/Grafana if you export them later.
----
+
 ## 📚 Related Documentation
 
 - [EventType Reference](./constant/eventType.js)
@@ -606,8 +615,4 @@ Part of Framework Core - Internal Use Only
 
 
 
-
-This follows the convention where documentation lives alongside the code it describes, making it easy for developers to find.
-
----
 

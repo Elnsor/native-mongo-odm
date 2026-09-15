@@ -1,6 +1,3 @@
-Here is the Architecture Decision Record (ADR) documenting the evolution of the `CollectionManager.js` file, written in standard professional English.
-
----
 
 # ADR-003: Enforce Schema-First Architecture and Add Boot Synchronization in CollectionManager
 

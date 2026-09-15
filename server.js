@@ -4,6 +4,8 @@ import { connectDb, closeDb,getDb } from "./src/config/db.js";
 import { collectionManager } from "./src/framework/CollectionManager.js";
 import { applicationSchemaRegistry } from "./src/framework/applicationSchemaRegistry.js";
 import { loadDirectory } from "./src/utils/dynamicImport.js";
+import { initializeMonitoring } from "./src/Monitor/monitoringSystem.js";
+import { registerFrameworkMetricsHandlers } from "./src/Monitor/handler/frameworkMetricsHandlers.js";
 import app from './app.js'
 
 
@@ -15,7 +17,15 @@ dotenv.config();
 const PORT=3000
 
 async function bootstrap(){
-
+ 
+    initializeMonitoring({
+            enabled: true,
+            auditEnabled: true,
+            maxBufferSize: 1000,
+            flushIntervalMs: 5000,
+            logFilePath: './audit.jsonl'
+        });
+    registerFrameworkMetricsHandlers();
     await connectDb();
   //dynamic importing 
    await loadDirectory('./src/modules')

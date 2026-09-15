@@ -1,11 +1,7 @@
-Here is the Architecture Decision Record (ADR) documenting the design and implementation of the `SecurityRulesEngine.js`, written in standard professional English.
-
----
-
 # ADR-006: Implementation of Centralized Security and Business Rules Engine for Field-Level Access Control
 
 - **Status:** Accepted
-- **Date:** 2024-05-20
+- **Date:** 2026-09-01
 - **Deciders:** Development Team
 - **Related Files:** `SecurityRulesEngine.js`, `SchemaBuilder.js`, `appRolesMeddlware.js`
 

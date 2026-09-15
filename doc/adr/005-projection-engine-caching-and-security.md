@@ -1,7 +1,3 @@
-Here is the Architecture Decision Record (ADR) documenting the design and implementation of the `Projection` engine, written in standard professional English.
-
----
-
 # ADR-005: Implement Static Caching and Database-Level Projection Engine for Data Security
 
 - **Status:** Accepted

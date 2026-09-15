@@ -86,7 +86,7 @@ export class MonitoringSystem {
      * Registers a string label and returns a unique numeric ID.
      * If the string already exists, it returns the existing ID (O(1) lookup).
      * if we need to add label to metrics name we must rigester the name stringe and got id 
-     * then when mertircs hanlder run can reead id for its data.v and get name then adding label to its metrics name 
+     * then when mertircs hanlder run can read id for its data.v and get name then adding label to its metrics name 
      * @param {string} label 
      * @returns {number}
      */

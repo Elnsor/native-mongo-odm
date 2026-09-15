@@ -1,7 +1,3 @@
-Here is the Architecture Decision Record (ADR) documenting the refactoring of the authentication controllers and the introduction of the `UserService`, written in standard professional English.
-
----
-
 # ADR-007: Implementation of Service Layer for Authentication and User Management
 
 - **Status:** Accepted

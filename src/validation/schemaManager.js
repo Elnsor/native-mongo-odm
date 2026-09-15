@@ -5,6 +5,8 @@ import { AppError } from "../framework/appError.js";
 import { collectionManager } from "../framework/CollectionManager.js";
 import { applicationSchemaRegistry } from "../framework/applicationSchemaRegistry.js";
 import { frameworkConfig } from "../config/frameworkConfig.js";
+import { record, auditLog } from "../Monitor/monitoringSystem.js";
+import { EVENT_TYPES,EVENT_MTYPES,DOMAIN } from "../Monitor/constant/eventType.js";
 
 
 class SchemaValidationMananger {
@@ -430,6 +432,9 @@ _isFieldExplicitlyProvided(doc, fieldName) {
 
 
 async validateDocument(collectionName, doc, skipRequired = { "_id": true, "createdAt": true, "updatedAt": true }, isUpdate) {
+
+    const startTime = performance.now();
+    try{
     
     if (!doc || typeof doc !== 'object' || Array.isArray(doc)) {
         throw new AppError("Validation Failure: Document payload must be a valid object.", 400);
@@ -467,26 +472,56 @@ async validateDocument(collectionName, doc, skipRequired = { "_id": true, "creat
         if (fieldValue === undefined || fieldValue === null) {
             if (schemaRequired.has(fieldName) && (!skipRequired[fieldName] && !fieldappRoles?.managedBySystem)) {
                 if(!isUpdate || this._isFieldExplicitlyProvided(doc,fieldName))
+                   
                 throw new AppError(`Validation Failure: Required field '${fieldName}' is missing.`, 400);
                 
             }
             continue;
         }
 
-        // 4. Format & validate primitive value[cite: 3]
+        // 4. Format & validate primitive value
         const validatedValue = this._proccessAndValidateValue(collectionName, fieldName, fieldValue, fieldMongoRoles);
 
         // 5. Write back to sanitized document using nested path setter
         this._setNestedValue(sanitizerDoc, fieldName, validatedValue);
     }
         
-    // 6. Security Check: Block undefined structural fields[cite: 3]
+    // 6. Security Check: Block undefined structural fields
     if (docSet.size > 0) {
         const forbiddenFields = [...docSet].join(', ');
+       
         throw new AppError(`Security Exception: Direct modification of undefined structural fields [${forbiddenFields}] is blocked.`, 400);
     }
+    
+     
+    const durationNs = (performance.now() - startTime) * 1000000;
+    record(DOMAIN.ODM_DOMAIN,EVENT_TYPES.SCHEMA_VALIDATE_END,EVENT_MTYPES.METRIC_H,durationNs);
+     auditLog(
+                DOMAIN.ODM_DOMAIN, 
+                'document_validate', 
+                { actor:'system' }, 
+                { collection: this.collectionName }, 
+                'success',
+                { durationMs: durationNs / 1000000 }
+            );
+
+
 
     return sanitizerDoc;
+}catch(err){
+     record(DOMAIN.ODM_DOMAIN,EVENT_TYPES.SCHEMA_VALIDATE_ERROR,EVENT_MTYPES.METRIC_C);
+     auditLog(
+                DOMAIN.ODM_DOMAIN, 
+                'document_validate_faild', 
+                { actor:'system' }, 
+                { collection: this.collectionName ,error:err.message}, 
+                'failure',
+                
+            );
+    
+    throw err 
+    
+}
 }
 }
 
