@@ -1,6 +1,8 @@
 import { coreSystemManageTypes } from "../../strategies/coreSystemManageTypes.js";
 import { schemaManager } from "../../validation/schemaManager.js";
 import { AppError } from "../appError.js";
+import { record, auditLog } from "../../Monitor/monitoringSystem.js";
+import { DOMAIN, EVENT_TYPES, EVENT_MTYPES } from "../../Monitor/constant/eventType.js"
 
 class SecurityRulesEngine {
 
@@ -68,6 +70,13 @@ class SecurityRulesEngine {
 
     async evalRoles(collectionName, sanitizeDoc, currentDoc, userContextRole, isUpdate = false) {
 
+         const startTime = performance.now();
+        const actor = userContextRole?.role?.[0] || 'system';
+
+        
+       try{
+
+        record(DOMAIN.ODM_DOMAIN, EVENT_TYPES.SECURITY_EVAL_START, EVENT_MTYPES.METRIC_C);
         // Synchronously load registered schema from memory
         const baseSchema = await schemaManager.getSchema(collectionName);
         const schemaBlueprint = baseSchema.properties;
@@ -98,6 +107,12 @@ class SecurityRulesEngine {
                     const hasAccess = appRoles.restrictedRoles.some(role => userRoles.includes(role));
 
                     if (!hasAccess) {
+                        record(DOMAIN.ODM_DOMAIN, EVENT_TYPES.SECURITY_RULE_BLOCKED, EVENT_MTYPES.METRIC_C);
+                        auditLog(
+                                DOMAIN.ODM_DOMAIN, 'security_restricted_blocked', 
+                                { actor }, { collection: collectionName, field: fieldName, rule: 'restrictedRoles' }, 
+                                'failure', { userRoles }
+                            );
                         throw new AppError(`Security Exception: Unauthorized access to modify privileged restricted field '${fieldName}'.`, 403);
                     }
                 }
@@ -108,9 +123,22 @@ class SecurityRulesEngine {
 
                 if (newValue !== undefined) {
                     if (oldValue === undefined && appRoles.strictImmutable) {
+
+                        record(DOMAIN.ODM_DOMAIN, EVENT_TYPES.SECURITY_RULE_BLOCKED, EVENT_MTYPES.METRIC_C);
+                        auditLog(
+                                DOMAIN.ODM_DOMAIN, 'security_immutable_blocked', 
+                                { actor }, { collection: collectionName, field: fieldName, rule: 'strictImmutable' }, 
+                                'failure'
+                            );
                         throw new AppError(`Security Error: Field "${fieldName}" is strictly immutable and cannot be initialized during an update operation.`, 403);
                     }
                     if (oldValue !== undefined && oldValue !== newValue) {
+                        record(DOMAIN.ODM_DOMAIN, EVENT_TYPES.SECURITY_RULE_BLOCKED, EVENT_MTYPES.METRIC_C);
+                            auditLog(
+                                DOMAIN.ODM_DOMAIN, 'security_immutable_blocked', 
+                                { actor }, { collection: collectionName, field: fieldName, rule: 'immutable' }, 
+                                'failure'
+                            );
                         throw new AppError(`Security Error: Not allowed to modefied immutable Field "${fieldName}"`, 403);
                     }
                 }
@@ -130,6 +158,12 @@ class SecurityRulesEngine {
                            
 
                     this._setNestedValue(sanitizeDoc, fieldName, generatedValue);
+                    
+                    auditLog(
+                            DOMAIN.ODM_DOMAIN, 'system_field_injected', 
+                            { actor: 'system' }, { collection: collectionName, field: fieldName, type: appRoleType }, 
+                            'success'
+                        );
                     
                 } else if (this.customCore[appRoleType]) {
                     customCoreFunction.push({
@@ -157,8 +191,15 @@ class SecurityRulesEngine {
                 throw new AppError(`Runtime Execution Failure inside custom type system handler '${options.type}': ${err.message}`, 500);
             }
         }
+        const durationNs = (performance.now() - startTime) * 1000000;
+        record(DOMAIN.ODM_DOMAIN, EVENT_TYPES.SECURITY_EVAL_END, EVENT_MTYPES.METRIC_H, durationNs);
   
         return sanitizeDoc;
+    }catch(err){
+
+         record(DOMAIN.ODM_DOMAIN, EVENT_TYPES.SECURITY_RULE_BLOCKED, EVENT_MTYPES.METRIC_C);
+        throw err;
+    }
     }
 }
 
