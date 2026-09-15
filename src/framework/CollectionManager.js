@@ -258,12 +258,16 @@ return null;
  * @returns {Array} - return all collection in dbserver
  */
 async getAllCollection(){
+    const startTime = performance.now();
  const db = getDb();
  try {
                 const collection = await db.listCollections().toArray();
+                const durationNs = (performance.now() - startTime) * 1000000;
                  record(DOMAIN.ODM_DOMAIN, EVENT_TYPES.DB_QUERY_END, EVENT_MTYPES.METRIC_H, durationNs);
                 return collection;
             } catch (error) {
+                const durationNs = (performance.now() - startTime) * 1000000;
+                 record(DOMAIN.ODM_DOMAIN, EVENT_TYPES.DB_QUERY_END, EVENT_MTYPES.METRIC_H, durationNs);
                  auditLog(DOMAIN.ODM_DOMAIN, 'collection_list_failed', { actor: 'system' }, {}, 'failure', { error: error.message });
 
                 console.error(`Error: Fetching Collection From Database Faild: ${error.message} `);
