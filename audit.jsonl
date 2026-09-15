@@ -1,0 +1,10 @@
+{"timestamp":1789421383166,"action":"document_validate","actor":{"actor":"system"},"resource":{},"outcome":"success","metadata":{"durationMs":0.5991999999996552}}
+{"timestamp":1789421411056,"action":"document_validate","actor":{"actor":"system"},"resource":{},"outcome":"success","metadata":{"durationMs":0.22419999999692664}}
+{"timestamp":1789421711714,"action":"document_validate","actor":{"actor":"system"},"resource":{},"outcome":"success","metadata":{"durationMs":0.12010000000009313}}
+{"timestamp":1789421851155,"action":"document_validate","actor":{"actor":"system"},"resource":{},"outcome":"success","metadata":{"durationMs":0.05640000000130385}}
+{"timestamp":1789422276263,"action":"document_validate","actor":{"actor":"system"},"resource":{},"outcome":"success","metadata":{"durationMs":0.5744999999988067}}
+{"timestamp":1789423444683,"action":"document_validate_faild","actor":{"actor":"system"},"resource":{"error":"Validation Failure: Required field 'username' is missing."},"outcome":"failure","metadata":{}}
+{"timestamp":1789428929207,"action":"document_validate_faild","actor":{"actor":"system"},"resource":{"error":"Validation Failure: Required field 'username' is missing."},"outcome":"failure","metadata":{}}
+{"timestamp":1789429108135,"action":"document_validate_faild","actor":{"actor":"system"},"resource":{"error":"Validation Failure: Required field 'username' is missing."},"outcome":"failure","metadata":{}}
+{"timestamp":1789429123321,"action":"document_validate_faild","actor":{"actor":"system"},"resource":{"error":"Validation Failure: Required field 'username' is missing."},"outcome":"failure","metadata":{}}
+{"timestamp":1789433062020,"action":"document_validate","actor":{"actor":"system"},"resource":{},"outcome":"success","metadata":{"durationMs":0.5761999999958789}}
