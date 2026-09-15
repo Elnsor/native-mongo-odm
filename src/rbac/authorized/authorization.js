@@ -227,7 +227,7 @@ if (access && access?.code === undefined) return access;
     if (access && access.code === SYSTEM_STATUS.PERMISSION_EXPIRED) {
         const newAddr = role.geteffected(GroupRoleId, parentId, parnetIns, child, childCompact, grandChild, grandChildCompact);
 
-          record(EVENT_TYPES.RBAC_AUTH_EXPIRED,EVENT_MTYPES.METRIC_C);
+          record(DOMAIN.RBAC_DOMAIN,EVENT_TYPES.RBAC_AUTH_EXPIRED,EVENT_MTYPES.METRIC_C);
         
         // checking address type
         if (typeof newAddr === 'number') {
