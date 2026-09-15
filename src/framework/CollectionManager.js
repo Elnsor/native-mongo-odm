@@ -2,6 +2,8 @@ import { Collection, Db } from "mongodb";
 import { getDb } from "../config/db.js";
 import { applicationSchemaRegistry } from "./applicationSchemaRegistry.js";
 import { Projection } from "./engines/projectionEngine.js";
+import { record, auditLog } from "../Monitor/monitoringSystem.js";
+import { DOMAIN, EVENT_TYPES, EVENT_MTYPES } from "../Monitor/constant/eventType.js";
 
 export class CollectionManager{
     constructor(){
@@ -79,8 +81,10 @@ export class CollectionManager{
  * @returns {Promis<Collection|Error>}
  */
     async createCollectionv1(collectionName,update=false){
+         const startTime = performance.now();
        
         if(! applicationSchemaRegistry.isRegister(collectionName) ){
+            auditLog(DOMAIN.ODM_DOMAIN, 'collection_create_failed', { actor: 'system' }, { collection: collectionName }, 'failure', { error: err.message });
             throw new Error("CollectionError: you must register your schema first !!"); 
         }
     
@@ -90,6 +94,8 @@ export class CollectionManager{
 
         if(collectionObject && ! update){
          this.cache[collectionName]=collectionObject;
+          const durationNs = (performance.now() - startTime) * 1000000;
+          record(DOMAIN.ODM_DOMAIN, EVENT_TYPES.DB_QUERY_END, EVENT_MTYPES.METRIC_H, durationNs);
             return collectionObject;
         }
 // the collection does not exist
@@ -124,9 +130,17 @@ export class CollectionManager{
         console.log(`collection name ${collectionName} is created with schema Validation Rule and Indexed`);
         this.cache[collectionName]=collectionObject;
         this.current = collectionName;
+            
+            const durationNs = (performance.now() - startTime) * 1000000;
+            record(DOMAIN.ODM_DOMAIN, EVENT_TYPES.DB_QUERY_END, EVENT_MTYPES.METRIC_H, durationNs);
+            auditLog(DOMAIN.ODM_DOMAIN, `collection_${action}d`, { actor: 'system' }, { collection: collectionName }, 'success', { indexed: schemaBuilder.getIndex().length });
         return collectionObject;
 
     } catch (error) {
+
+            const durationNs = (performance.now() - startTime) * 1000000;
+            record(DOMAIN.ODM_DOMAIN, EVENT_TYPES.DB_QUERY_END, EVENT_MTYPES.METRIC_H, durationNs);
+            auditLog(DOMAIN.ODM_DOMAIN, 'collection_update_failed', { actor: 'system' }, { collection: collectionName }, 'failure', { error: error.message });
         console.error(`❌ Something went wrong when creating collection: ${collectionName}`, error);
             throw error; 
 
@@ -247,8 +261,10 @@ async getAllCollection(){
  const db = getDb();
  try {
                 const collection = await db.listCollections().toArray();
+                 record(DOMAIN.ODM_DOMAIN, EVENT_TYPES.DB_QUERY_END, EVENT_MTYPES.METRIC_H, durationNs);
                 return collection;
             } catch (error) {
+                 auditLog(DOMAIN.ODM_DOMAIN, 'collection_list_failed', { actor: 'system' }, {}, 'failure', { error: error.message });
 
                 console.error(`Error: Fetching Collection From Database Faild: ${error.message} `);
                 return null;
@@ -269,6 +285,8 @@ async getAllCollection(){
  */
 
 async syncAllCollectionOnBoot(registerInstanc){
+
+     const startTime = performance.now();
     const db=getDb();
 
     const collectionList= await this.getAllCollection();
@@ -279,14 +297,16 @@ async syncAllCollectionOnBoot(registerInstanc){
     for(let i=0 ; i<schemaRegistry.length; i++){
 
         const [schemaName,schemaClass]=schemaRegistry[i];
-        console.log("schema",schemaName)
+       
         Projection.addProjection(schemaName,schemaClass);
         const schemaCompiled=schemaClass.compileValidator();
       
         if (!collectionListName.has(schemaName)){
             await db.createCollection(schemaName,schemaCompiled);
+            auditLog(DOMAIN.ODM_DOMAIN, 'collection_created', { actor: 'system_boot' }, { collection: schemaName }, 'success');
         }else{
             await db.command({ collMod: schemaName, validator: schemaCompiled.validator })
+             auditLog(DOMAIN.ODM_DOMAIN, 'collection_updated', { actor: 'system_boot' }, { collection: schemaName }, 'success'); 
         }
 
         const collectionObject=db.collection(schemaName);
@@ -298,6 +318,8 @@ async syncAllCollectionOnBoot(registerInstanc){
             await collectionObject.createIndex(key, option);
         }
         this.cache[schemaName]=collectionObject
+         const durationNs = (performance.now() - startTime) * 1000000;
+        record(DOMAIN.ODM_DOMAIN, EVENT_TYPES.DB_TRANSACTION_COMMIT, EVENT_MTYPES.METRIC_H, durationNs); 
 
 
     }
