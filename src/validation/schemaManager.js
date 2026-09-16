@@ -500,7 +500,7 @@ async validateDocument(collectionName, doc, skipRequired = { "_id": true, "creat
                 DOMAIN.ODM_DOMAIN, 
                 'document_validate', 
                 { actor:'system' }, 
-                { collection: this.collectionName }, 
+                { collection: collectionName}, 
                 'success',
                 { durationMs: durationNs / 1000000 }
             );
@@ -514,7 +514,7 @@ async validateDocument(collectionName, doc, skipRequired = { "_id": true, "creat
                 DOMAIN.ODM_DOMAIN, 
                 'document_validate_faild', 
                 { actor:'system' }, 
-                { collection: this.collectionName ,error:err.message}, 
+                { collection: collectionName ,error:err.message}, 
                 'failure',
                 
             );

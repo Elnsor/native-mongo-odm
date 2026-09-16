@@ -74,7 +74,7 @@ export class BaseController{
     const queryFilterd= {};
 
         if(frameworkConfig.schemaDefaults.softDocumentDelete){
-            queryFilterd.deteledAt={$exists: false};
+            queryFilterd.deletedAt={$exists: false};
         }
 
 
@@ -98,7 +98,7 @@ findById = catchAsync(async (req,res,next) => {
     const queryFilterd= {_id: new ObjectId(req.params.id)};
 
         if(frameworkConfig.schemaDefaults.softDocumentDelete){
-            queryFilterd.deteledAt={$exists: false};
+            queryFilterd.deletedAt={$exists: false};
         }
 
 
@@ -179,7 +179,7 @@ update = catchAsync( async (req, res,next) => {
             }
              
             if(frameworkConfig.schemaDefaults.softDocumentDelete){
-                queryFilterd.deteledAt={$exists: false};
+                queryFilterd.deletedAt={$exists: false};
             }
 
        
