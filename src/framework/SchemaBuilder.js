@@ -26,6 +26,9 @@ import { Schema } from "./Schema.js";
  * @property {Array | false} restrictedRoles - when its array it contain user role like e.g ["admin","superAdmin"]that allowed to read from this fields
  *  if its flase the it then it not restricted
  * @property {boolean} nullable - when its true its accept the value for this field to be null otherwize not accepted to be null , nallable value only accepted when field is optional 
+ * @property {boolean} hasNestedChildren -- i type of field is object and its property are define as feild inside collection 
+ * so if this set to true means this field name is object and has property define another field inside collection e.g (accountInf.email ,publicInfo.firstName )
+ *  the accountInfo and publicinfo are parent so its hasNestedChildren set to true 
  * 
  */
 
@@ -34,6 +37,7 @@ export class SchemaBuilder extends Schema {
 
     constructor(collectionName,definition = {}) {
         super(collectionName,definition);
+        this._parentsWithChildren=new Set();
 
         this.propertyName = "";
 
@@ -53,7 +57,8 @@ export class SchemaBuilder extends Schema {
         select: config.select !== undefined ? config.select : true,
         managedBySystem: config.managedBySystem || false,
         restrictedRoles: config.restrictedRoles || false,
-        nullable: config.nullable !== undefined ? config.nullable : false
+        nullable: config.nullable !== undefined ? config.nullable : false,
+        hasNestedChildren:config.hasNestedChildren  !== undefined? config.hasNestedChildren:false
     };
     return appRoles;
 
@@ -88,6 +93,19 @@ export class SchemaBuilder extends Schema {
     if(required){
             this.setRequired(name);
         }
+
+        // If this is a nested field (e.g., "accountInfo.email"), flag the root parent
+    if (name.includes('.')) {
+        const rootParent = name.split('.')[0];
+        this._parentsWithChildren.add(rootParent);
+        
+        // If the parent object was already defined, update its appRoles immediately
+        const parentProp = this.getProperty(rootParent);
+        if (parentProp && parentProp.appRoles) {
+            parentProp.appRoles.hasNestedChildren = true;
+        }
+    }
+        
        
         this.setProperty(name,{mongoRoles:mongoRoles,appRoles:applicationRole});
    }
@@ -212,7 +230,7 @@ binData({
 object({
     name = "",
     attrs = {},
-    config = { required: false }
+    config = { required: false ,hasNestedChildren:false}
 } = {}) {
     const mongoRoles = {
         bsonType: 'object',
@@ -220,6 +238,12 @@ object({
     };
 
     const appRoles = this.#applyDefaultconfig(config);
+
+     // If a child was already defined before this parent, flag it now
+    if (this._parentsWithChildren.has(name)) {
+        appRoles.hasNestedChildren = true;
+    }
+
     this._applyFieldRules(name, mongoRoles, appRoles);
 
     return this;
@@ -329,6 +353,7 @@ withVersionConcurrencyControl(){
  const occConfig = { required: true,select: true ,managedBySystem:{ type: 'version'},immutable:true};
  this.#applySystemRules("version",{bsonType:'number',description:`this for prevent 2 client from update one document in same time`},occConfig)
     }
+    return this;
 }
 
 }
