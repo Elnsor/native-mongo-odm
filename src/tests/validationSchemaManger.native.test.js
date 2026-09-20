@@ -1,256 +1,494 @@
-// import {test,describe,mock,beforeEach,afterEach,it} from 'node:test'
-// import assert from 'node:assert/strict'
-// //import { getDb, getDb as originalGetDb } from '../config/db.js'
-// import dotenv from 'dotenv'
-// dotenv.config();
 
-
-
-
-// const trackGetDb = mock.fn(originalGetDb).mock.mockImplementation( ()=> true )
-
-
-// mock.module("../config/db.js",{
-//     exports :{
-//         getDb : trackGetDb
-//     }
-// });
-
-//  let compiledSchema = {
-//             options: mock.fn(() => ({
-//                 validator: {
-//                     $jsonSchema: {
-//                         required: ["username", "email"],
-//                         properties: {
-//                             username: { bsonType: "string", pattern: "^[a-zA-Z0-9]+$" },
-//                             email: { bsonType: "string" },
-//                             age: { bsonType: "int" },
-//                             isActive: { bsonType: "bool" }
-//                         }
-//                     }
-//                 }
-//             }))
-//         };// end schemacollection 
-
-//         let mockCollectionManager={
-//             getCollection:mock.fn(async function(){
-//                 return compiledSchema;
-//             })
-//         }
-// mock.module('../framework/CollectionManager.js', {
-//     exports: {
-//         collectionManager: mockCollectionManager
-//     }
-// });
-
-// const {schemaManager} = await import('../validation/schemaManager.js')
-
-// describe("(Unit Test): SchemaValidation Test",()=>{
-//     beforeEach(()=>{
-
-//     });
-//     afterEach(()=>{
-//         mockCollectionManager.getCollection.mock.resetCalls();
-//         compiledSchema.options.mock.resetCalls();
-//     });
-
-//      describe("gevin: loadSchema and getSchema", () => {
-
-//         test("should parse MongoDB $jsonSchema rules and cache them successfully", async () => {
-
-//             const schema = await schemaManager.getSchema("users");
-//             assert.equal(mockCollectionManager.getCollection.mock.calls.length,1)
-//             assert.equal(mockCollectionManager.getCollection.mock.calls[0].arguments[0],"users")
-            
-//             assert.ok(schema.required.includes("username"))
-//             assert.strictEqual(schema.properties.username.bsonType,'string');
-
-
-//         })
-//     });// end describe
-
-//     describe("gevin: formatValue() Examin Primitive and Type Casting", () => {
-
-//         test("should cleanly trim strings and parse string primitives", () => {
-//             assert.strictEqual(schemaManager.formatValue("string", "  elkas  "),"elkas");
-//             assert.strictEqual(schemaManager.formatValue("string", 100),"100");
-
-
-//         })
-//     });// end describe
-
-//      describe("gevin: formatValue() Examin number Type ", () => {
-
-//        test("should cast valid numbers and throw an error on empty string primitives", () => {
-//             assert.strictEqual(schemaManager.formatValue("int", "45"),45);
-//             assert.strictEqual(schemaManager.formatValue("double", "12.5"),12.5);
-
-//             assert.throws( () => {
-//                   schemaManager.formatValue("int", "   ")
-//             },
-//                 /value must be valid int/i
-//         )
-            
-//         });
-//     });// end describe
-
-//     describe("gevin:validateDocument() Core Workflow Pass ", () => {
-
-//        test("should sanitize, trim, and validate an entire valid document on insertion structure passes", async () => {
-//             const inputDoc = {
-//                 username: "  user123 ",
-//                 email: "test@test.com",
-//                 age: "30",
-//                 isActive: 1
-//             };
-
-//             const validatedDoc = await schemaManager.validateDocument("users", inputDoc, undefined, false);
-
-//             assert.strictEqual(validatedDoc.username,"user123"); // Trimmed
-//             assert.strictEqual(validatedDoc.age,30);             // Casted to Number
-//             assert.strictEqual(validatedDoc.isActive,true);       // Casted to Boolean
-//             assert.strictEqual(validatedDoc.createdAt instanceof Date,true);
-//             assert.strictEqual(validatedDoc.updatedAt instanceof Date,true);
-//         });
-//     });// end describe
-
-//     describe("gevin: validateDocument() missing required Field ", () => {
-
-//         test("should throw a validation exception if a strictly required field is missing on creation", async () => {
-//             const incompleteDoc = {
-//                 username: "user123"
-//                 // 'email' parameter is completely missing here
-//             };
-
-//             await assert.rejects(async ()=>{
-
-//                  await schemaManager.validateDocument("users", incompleteDoc, undefined, false)
-//             },
-//             (err)=>{
-
-//                 assert.match(err.message,/Validation Error: required/i);
-//                  return true;
-
-//             })
-
-//         });
-//     });// end describe
-
-//     describe("gevin: validateDocument() Test bad regex Pattern", () => {
-
-//         test("should reject document processing iterations if regex pattern constraints fail", async () => {
-//             const badPatternDoc = {
-//                 username: "user_invalid_spaces!!", // Fails pattern verification regex rule
-//                 email: "test@test.com"
-//             };
-
-//               await assert.rejects(async ()=>{
-
-//                  await schemaManager.validateDocument("users", badPatternDoc, undefined, false)
-//             },
-//             (err)=>{
-
-//                 assert.match(err.message,/Field username in collection users not valid format/i);
-//                  return true;
-
-//             })
-
-          
-//         });
-//     });// end describe
-
-// })
-import { describe, it, beforeEach } from 'node:test';
-import assert from 'node:assert';
+/**
+ * apply test for new updated for this class 
+ * date : 20-9-2026
+ */
+import { describe, test, beforeEach, afterEach, mock, it } from 'node:test';
+import assert from 'node:assert/strict';
 import { schemaManager } from '../validation/schemaManager.js';
 import { SchemaBuilder } from '../framework/SchemaBuilder.js';
 import { applicationSchemaRegistry } from '../framework/applicationSchemaRegistry.js';
+import { collectionManager } from '../framework/CollectionManager.js';
 import { frameworkConfig } from '../config/frameworkConfig.js';
-import dotenv from "dotenv"
+import { AppError } from '../framework/appError.js';
 
-dotenv.config();
+describe('SchemaValidationMananger (schemaManager)', () => {
+  
+  beforeEach(() => {
+    // Reset state before each test
+    schemaManager.schemaCache = {};
+    applicationSchemaRegistry.registry.clear();
+    // Ensure we test the registry path by default
+    frameworkConfig.schemaDefaults.autoLoadingRegisterSchema = true;
+  });
 
+  afterEach(() => {
+    mock.restoreAll();
+  });
 
-describe("Unit Test: SchemaValidationMananger with SchemaBuilder & Registry", () => {
+  // ==========================================================================
+  // 1. SCHEMA LOADING & CACHING
+  // ==========================================================================
+  describe('Schema Loading', () => {
+    test('should load schema from applicationSchemaRegistry and pre-calculate flags', async () => {
+      const builder = new SchemaBuilder('test_users')
+        .object({ name: 'accountInfo' })
+        .string({ name: 'accountInfo.email', config: { required: true } })
+        .string({ name: 'username', config: { required: true } });
+      
+      applicationSchemaRegistry.register('test_users', builder);
 
-    beforeEach(() => {
-        // Enable auto-loading registry configuration so schemaManager fetches from applicationSchemaRegistry
-        frameworkConfig.schemaDefaults.auotLoadingRegisterSchema = true;
-        schemaManager.schemaCache = {};
+      const schema = await schemaManager.getSchema('test_users');
+
+      assert.ok(schema.required.has('accountInfo.email'));
+      assert.ok(schema.required.has('username'));
+      assert.ok(schema.validSchemaKeys.has('accountInfo.email'));
+      
+      // The core optimization: parent should be flagged as having nested children
+      assert.strictEqual(schema.properties.accountInfo.appRoles.hasNestedChildren, true);
+      assert.strictEqual(schema.properties.username.appRoles.hasNestedChildren, false);
     });
 
-    describe("validateDocument with Registered Schema Builder", () => {
+    test('should load schema from MongoDB collection options when registry is disabled', async () => {
+      frameworkConfig.schemaDefaults.autoLoadingRegisterSchema = false;
 
-        it("should successfully build, register, and validate nested document structures using v2", async () => {
-            // 1. Create SchemaBuilder instance for the collection
+      const mockCollection = {
+        options: mock.fn(async () => ({
+          validator: {
+            $jsonSchema: {
+              required: ['email'],
+              properties: {
+                email: { bsonType: 'string' },
+                profile: { bsonType: 'object'},              
+               'profile.age': { bsonType: 'int' } ,// Simulating dot notation in DB schema
+                },
+              }
+            }
+        }))
+      };
+
+      const getCollectionMock = mock.method(collectionManager, 'getCollection', async () => mockCollection);
+
+      const schema =  await schemaManager.getSchema('db_users');
+      
+
+      assert.ok(getCollectionMock.mock.calls.length === 1);
+      assert.strictEqual(schema.properties.profile.appRoles.hasNestedChildren, true);
+      assert.ok(schema.validSchemaKeys.has('profile.age'));
+    });
+
+     it("should correctly compute 'hasNestedChildren' flag in loadRegisterdSchema", () => {
+            const builder = new SchemaBuilder("testCollection")
+                .object({ name: "accountInfo", config: { nullable: false } })
+                .string({ name: "accountInfo.email", config: { required: true } })
+                .string({ name: "username", config: { required: true } });
+            
+            applicationSchemaRegistry.register("testCollection", builder);
+            
+            // Access internal method to test parity
+            const schema = schemaManager.loadRegisterdSchema("testCollection");
+            
+            assert.strictEqual(schema.properties["accountInfo"].appRoles.hasNestedChildren, true);
+            assert.strictEqual(schema.properties["accountInfo.email"].appRoles.hasNestedChildren, false);
+            assert.strictEqual(schema.properties["username"].appRoles.hasNestedChildren, false);
+        });
+
+    test('should throw 403 if collection has no schema properties', async () => {
+      frameworkConfig.schemaDefaults.autoLoadingRegisterSchema = false;
+      const mockCollection = { options: mock.fn(async () => ({})) };
+      mock.method(collectionManager, 'getCollection', async () => mockCollection);
+
+      await assert.rejects(
+        async () => await schemaManager.getSchema('no_schema_collection'),
+        (err) => {
+          assert.ok(err instanceof AppError);
+          assert.strictEqual(err.statusCode, 403);
+          assert.match(err.message, /has no defined validation schema layout/);
+          return true;
+        }
+      );
+    });
+  });
+
+  // ==========================================================================
+  // 2. VALUE FORMATTING & TYPE CASTING
+  // ==========================================================================
+  describe('formatValue', () => {
+    test('should trim and validate strings', () => {
+      const result = schemaManager.formatValue('username', 'users', 'string', '  john_doe  ', { minLength: 3 });
+      assert.strictEqual(result, 'john_doe');
+    });
+
+    test('should reject strings failing regex pattern', () => {
+      assert.throws(
+        () => schemaManager.formatValue('email', 'users', 'string', 'invalid-email', { pattern: '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$' }),
+        /not valid format/
+      );
+    });
+
+    test('should cast and validate numbers (int/double)', () => {
+      assert.strictEqual(schemaManager.formatValue('age', 'users', 'int', '25', { minimum: 18 }), 25);
+      assert.strictEqual(schemaManager.formatValue('price', 'users', 'double', '19.99', { maximum: 100 }), 19.99);
+      
+      assert.throws(
+        () => schemaManager.formatValue('age', 'users', 'int', '15', { minimum: 18 }),
+        /less than minimim expected/
+      );
+    });
+
+    test('should coerce booleans correctly', () => {
+      assert.strictEqual(schemaManager.formatValue('isActive', 'users', 'bool', 'true'), true);
+      assert.strictEqual(schemaManager.formatValue('isActive', 'users', 'bool', 0), false);
+      assert.throws(
+        () => schemaManager.formatValue('isActive', 'users', 'bool', 'maybe'),
+        /must be valid boolean/
+      );
+    });
+
+    test('should parse dates', () => {
+      const result = schemaManager.formatValue('createdAt', 'users', 'date', '2023-10-25T10:00:00Z');
+      assert.ok(result instanceof Date);
+      assert.strictEqual(result.getTime(), new Date('2023-10-25T10:00:00Z').getTime());
+    });
+
+    test('should validate plain objects and reject arrays/null', () => {
+      assert.deepStrictEqual(schemaManager.formatValue('meta', 'users', 'object', { a: 1 }), { a: 1 });
+      
+      assert.throws(() => schemaManager.formatValue('meta', 'users', 'object', null), /must be a valid plain Object/);
+      assert.throws(() => schemaManager.formatValue('meta', 'users', 'object', [1, 2]), /must be a valid plain Object/);
+    });
+
+    test('should validate arrays with constraints', () => {
+      const result = schemaManager.formatValue('tags', 'users', 'array', ['a', 'b'], { minItems: 1, maxItems: 5, uniqueItems: true });
+      assert.deepStrictEqual(result, ['a', 'b']);
+
+      assert.throws(
+        () => schemaManager.formatValue('tags', 'users', 'array', ['a', 'a'], { uniqueItems: true }),
+        /must contain unique items/
+      );
+    });
+  });
+
+  // ==========================================================================
+  // 3. HELPER METHODS
+  // ==========================================================================
+  describe('Nested Helpers', () => {
+    test('_getNestedValue should retrieve deep values', () => {
+      const obj = { a: { b: { c: 42 } } };
+      assert.strictEqual(schemaManager._getNestedValue(obj, 'a.b.c'), 42);
+      assert.strictEqual(schemaManager._getNestedValue(obj, 'a.x'), undefined);
+    });
+
+    test('_setNestedValue should create nested structures', () => {
+      const obj = {};
+      schemaManager._setNestedValue(obj, 'a.b.c', 42);
+      assert.deepStrictEqual(obj, { a: { b: { c: 42 } } });
+    });
+
+    test('_isFieldExplicitlyProvided should check existence accurately', () => {
+      const doc = { a: { b: null }, c: undefined };
+      assert.strictEqual(schemaManager._isFieldExplicitlyProvided(doc, 'a.b'), true); // null is explicitly provided
+      assert.strictEqual(schemaManager._isFieldExplicitlyProvided(doc, 'a.c'), false);
+      assert.strictEqual(schemaManager._isFieldExplicitlyProvided(doc, 'x.y'), false);
+    });
+      it("_mergeObjFast should correctly flatten objects and track docSet", () => {
+            const input = { email: "a@b.com", details: { age: 30, city: "NY" } };
+            const result = {};
+            const docSet = new Set();
+            
+            schemaManager._mergeObjFast(input, "user", result, docSet);
+            
+            assert.strictEqual(result["user.email"], "a@b.com");
+            assert.strictEqual(result["user.details.age"], 30);
+            assert.strictEqual(result["user.details.city"], "NY");
+            assert.strictEqual(docSet.has("user.email"), true);
+            assert.strictEqual(docSet.has("user.details.age"), true);
+            assert.strictEqual(docSet.has("user.details.city"), true);
+        });
+  });
+
+  // ==========================================================================
+  // 4. DOCUMENT VALIDATION (CORE LOGIC)
+  // ==========================================================================
+  describe('validateDocument', () => {
+    
+    test('should successfully validate and sanitize a valid nested document', async () => {
+      const builder = new SchemaBuilder('strict_users')
+        .object({ name: 'accountInfo' })
+        .string({ name: 'accountInfo.email', config: { required: true } })
+        .number({ name: 'accountInfo.age', attrs: { type: 'int' } });
+      
+      applicationSchemaRegistry.register('strict_users', builder);
+
+      const payload = {
+        accountInfo: {
+          email: '  test@example.com  ',
+          age: '25'
+        }
+      };
+
+      const sanitized = await schemaManager.validateDocument('strict_users', payload, {}, false);
+
+      assert.strictEqual(sanitized.accountInfo.email, 'test@example.com'); // Trimmed
+      assert.strictEqual(sanitized.accountInfo.age, 25); // Casted to number
+      assert.ok(sanitized.accountInfo);
+    });
+
+    test('should throw Security Exception for forbidden/unmapped fields', async () => {
+      const builder = new SchemaBuilder('secure_users')
+        .object({ name: 'accountInfo' })
+        .string({ name: 'accountInfo.email', config: { required: true } });
+      
+      applicationSchemaRegistry.register('secure_users', builder);
+
+      const payload = {
+        accountInfo: {
+          email: 'test@example.com',
+          isAdmin: true // <-- Forbidden field
+        }
+      };
+
+      await assert.rejects(
+        async () => await schemaManager.validateDocument('secure_users', payload, {}, false),
+        (err) => {
+          assert.ok(err instanceof AppError);
+          assert.strictEqual(err.statusCode, 400);
+          assert.match(err.message, /Security Exception: Direct modification of undefined structural fields \[accountInfo.isAdmin\]/);
+          return true;
+        }
+      );
+    });
+
+    test('should throw Validation Failure for missing required fields on INSERT', async () => {
+      const builder = new SchemaBuilder('required_users')
+        .object({ name: 'accountInfo' })
+        .string({ name: 'accountInfo.email', config: { required: true } });
+      
+      applicationSchemaRegistry.register('required_users', builder);
+
+      const payload = {
+        accountInfo: {
+          age: 30 // Missing required 'email'
+        }
+      };
+
+      await assert.rejects(
+        async () => await schemaManager.validateDocument('required_users', payload, {}, false),
+        (err) => {
+          assert.ok(err instanceof AppError);
+          assert.strictEqual(err.statusCode, 400);
+          assert.match(err.message, /Required field 'accountInfo\.email' is missing/);
+          return true;
+        }
+      );
+    });
+
+    test('should ALLOW missing required fields on UPDATE (Partial Update)', async () => {
+      const builder = new SchemaBuilder('update_users')
+        .object({ name: 'accountInfo' })
+        .string({ name: 'accountInfo.email', config: { required: true } })
+        .number({ name: 'accountInfo.age' });
+      
+      applicationSchemaRegistry.register('update_users', builder);
+
+      const payload = {
+        accountInfo: {
+          age: 31 // Updating only age, email is missing but it's an update
+        }
+      };
+
+      // isUpdate = true
+      const sanitized = await schemaManager.validateDocument('update_users', payload, {}, true);
+      
+      assert.strictEqual(sanitized.accountInfo.age, 31);
+      assert.strictEqual(sanitized.accountInfo.email, undefined); // Correctly omitted
+    });
+
+    test('should allow ANY nested fields in a "Black-Box" object (no hasNestedChildren)', async () => {
+      const builder = new SchemaBuilder('flexible_users')
+        .object({ name: 'metadata' }); // No 'metadata.*' fields defined
+      
+      applicationSchemaRegistry.register('flexible_users', builder);
+
+      const payload = {
+        metadata: {
+          customField1: 'value1',
+          customField2: 123,
+          nested: { deep: true }
+        }
+      };
+
+      const sanitized = await schemaManager.validateDocument('flexible_users', payload, {}, false);
+      
+      // Should pass without throwing "undefined structural fields"
+      assert.deepStrictEqual(sanitized.metadata, payload.metadata);
+    });
+
+    test('should handle null values correctly based on nullable config', async () => {
+      const builder = new SchemaBuilder('nullable_users')
+        .string({ name: 'bio', config: { required: false, nullable: true } })
+        .string({ name: 'username', config: { required: true, nullable: false } });
+      
+      applicationSchemaRegistry.register('nullable_users', builder);
+      
+      
+
+      const payload = {
+        username: 'john',
+        bio: null
+      };
+
+      const sanitized = await schemaManager.validateDocument('nullable_users', payload, {}, false);
+      
+      assert.strictEqual(sanitized.bio, null);
+
+      // Test non-nullable rejection
+      const badPayload = { username: null };
+      await assert.rejects(
+        async () => await schemaManager.validateDocument('nullable_users', badPayload, {}, false),
+        /Error: Validation Failure: Required field 'username' is missing/
+      );
+    });
+
+    test('should skip required checks for fields in skipRequired dictionary', async () => {
+      const builder = new SchemaBuilder('skip_users')
+        .string({ name: '_id', config: { required: true } })
+        .string({ name: 'username', config: { required: true } });
+      
+      applicationSchemaRegistry.register('skip_users', builder);
+
+      const payload = { username: 'john' }; // _id is missing
+
+      // _id is in default skipRequired
+      const sanitized = await schemaManager.validateDocument('skip_users', payload, { "_id": true }, false);
+      assert.strictEqual(sanitized.username, 'john');
+    });
+
+    test('should operate with mongo object dot notation and normal objec', async () => {
+      
+      /**mongo Dot notation eg . ('accountInfo.email') */
+        const builder = new SchemaBuilder('dot_users')
+        .object({ name: 'accountInfo' })
+        .string({ name: 'accountInfo.email', config: { required: true } })
+        .number({ name: 'accountInfo.age' });
+
+        /**normal object {_id:123 , username:"yaser"} */
+
+      const builder1 = new SchemaBuilder('normal_users')
+        .object({name:"details",config:{required:true}})
+        .string({ name: '_id', config: { required: true } })
+        .string({ name: 'username', config: { required: true } });
+      
+      applicationSchemaRegistry.register('dot_users', builder);
+       applicationSchemaRegistry.register('normal_users', builder1);
+
+      let payload = { accountInfo:{
+        email : "example@yahoo.com",
+        age: 30,
+
+
+      }  }; // dot 
+
+      // _id is in default skipRequired
+      let sanitized = await schemaManager.validateDocument('dot_users', payload, { "_id": true }, false);
+      assert.strictEqual(sanitized.accountInfo.email, 'example@yahoo.com');
+
+      payload={
+        details:{log:true,audit:"no"},
+        username:"yasser",
+        _id:"123"
+      }
+       sanitized = await schemaManager.validateDocument('normal_users', payload, { "_id": true }, false);
+      assert.strictEqual(sanitized.username, 'yasser');
+      assert.strictEqual(sanitized.details.log,true)
+
+
+    });
+        it("should successfully validate and reconstruct nested dot-notation documents", async () => {
             const builder = new SchemaBuilder("userProfiles")
-                .string({ 
-                    name: "accountInfo.email", 
-                    config: { required: true, nullable: false } 
-                })
-                .string({ 
-                    name: "profileType", 
-                    config: { required: true, nullable: false } 
-                })
-                .object({ 
-                    name: "accountInfo", 
-                    config: { nullable: false } 
-                })
-                .withTimestamps();
-
-            // 2. Register the schema builder instance via applicationSchemaRegistry
+                .object({ name: "accountInfo", config: { nullable: false } })
+                .string({ name: "accountInfo.email", config: { required: true } })
+                .number({ name: "accountInfo.age", config: { required: false } })
+                .string({ name: "status", config: { required: true } });
+            
             applicationSchemaRegistry.register("userProfiles", builder);
 
-            // 3. Define test payload
             const payload = {
-                accountInfo: { email: "engineer@example.com" },
-                profileType: "admin"
+                accountInfo: { email: "test@example.com", age: 25 },
+                status: "active"
             };
 
-            // 4. Execute document validation and sanitization
             const sanitized = await schemaManager.validateDocument("userProfiles", payload, {}, false);
 
-            // 5. Assertions
-            assert.strictEqual(sanitized.accountInfo.email, "engineer@example.com");
-            assert.strictEqual(sanitized.profileType, "admin");
+            assert.strictEqual(sanitized.accountInfo.email, "test@example.com");
+            assert.strictEqual(sanitized.accountInfo.age, 25);
+            assert.strictEqual(sanitized.status, "active");
+        });
+
+        it("should block unmapped top-level structural fields (Security Exception)", async () => {
+            const builder = new SchemaBuilder("secureProfiles")
+                .string({ name: "username", config: { required: true } });
             
-        });
-
-        it("should block unmapped top-level or structural fields when validated via registered schema", async () => {
-            const builder = new SchemaBuilder("userProfiles1")
-                .string({ name: "accountInfo.email", config: { required: true, nullable: false } })
-                .string({ name: "profileType", config: { required: true, nullable: false } })
-                .object({ name: "accountInfo", config: { nullable: false } });
-
-            applicationSchemaRegistry.register("userProfiles1", builder);
+            applicationSchemaRegistry.register("secureProfiles", builder);
 
             const payload = {
-                accountInfo: { email: "engineer@example.com" },
-                profileType: "admin",
-                unauthorizedField: "malicious_data"
+                username: "validUser",
+                maliciousField: "hacked" // Not in schema
             };
 
-            await assert.rejects(async () => {
-                await schemaManager.validateDocument("userProfiles", payload, {}, false);
-            },/Error: Security Exception: Direct modification of undefined structural fields \[unauthorizedField\] is blocked\./);
+            await assert.rejects(
+                async () => await schemaManager.validateDocument("secureProfiles", payload, {}, false),
+                (err) => {
+                    assert.ok(err instanceof AppError);
+                    assert.strictEqual(err.statusCode, 400);
+                    assert.match(err.message, /Security Exception: Direct modification of undefined structural fields/);
+                    return true;
+                }
+            );
         });
 
-        it("should fail validation if a required nested field is missing from the registered schema", async () => {
-            const builder = new SchemaBuilder("userProfiles2")
-                .string({ name: "accountInfo.email", config: { required: true, nullable: false } })
-                .string({ name: "profileType", config: { required: true, nullable: false } })
-                .object({ name: "accountInfo", config: { nullable: false } });
-
-            applicationSchemaRegistry.register("userProfiles2", builder);
+        it("should block unmapped nested fields inside an object container", async () => {
+            const builder = new SchemaBuilder("nestedSecure")
+                .object({ name: "profile", config: { nullable: false } })
+                .string({ name: "profile.name", config: { required: true } });
+            
+            applicationSchemaRegistry.register("nestedSecure", builder);
 
             const payload = {
-                accountInfo: { /* missing email */ },
-                profileType: "admin"
+                profile: { 
+                    name: "John",
+                    secretToken: "12345" // Not in schema
+                }
             };
 
-            await assert.rejects(async () => {
-                await schemaManager.validateDocument("userProfiles", payload, {}, false);
-            }, /Validation Failure: Required field 'accountInfo\.email' is missing\./);
+            await assert.rejects(
+                async () => await schemaManager.validateDocument("nestedSecure", payload, {}, false),
+                (err) => {
+                    assert.ok(err instanceof AppError);
+                    assert.strictEqual(err.statusCode, 400);
+                    assert.match(err.message, /Security Exception: Direct modification of undefined structural fields/);
+                    return true;
+                }
+            );
         });
-    });
+        
+        it("should enforce required fields unless skipped or managed by system", async () => {
+            const builder = new SchemaBuilder("requiredTest")
+                .string({ name: "mandatoryField", config: { required: true } });
+            
+            applicationSchemaRegistry.register("requiredTest", builder);
+
+            await assert.rejects(
+                async () => await schemaManager.validateDocument("requiredTest", {}, {}, false),
+                (err) => {
+                    assert.ok(err instanceof AppError);
+                    assert.strictEqual(err.statusCode, 400);
+                    assert.match(err.message, /Required field 'mandatoryField' is missing/);
+                    return true;
+                }
+            );
+        });
+
+    
+  });
 });
