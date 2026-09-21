@@ -58,6 +58,7 @@ export const EVENT_TYPES = {
     SECURITY_EVAL_START: 120,
     SECURITY_EVAL_END: 121,
     SECURITY_RULE_BLOCKED: 122, // e.g., immutable or restrictedRoles blocked it
+    SECURITY_SYSTEM_INJECT:123, //eg couneter of field that are managed by system 
 
     // ==========================================
     // Framework Core: Auth Token (140 - 159)
