@@ -57,6 +57,14 @@ unregister(collecionName){
     this.registry.delete(collecionName);
 
 }
+/**
+ * add this method for testing 
+ * add in 21-9-2026
+ * for clear all registry 
+ */
+reset(){
+    this.registry.clear();
+}
     
 }
 
