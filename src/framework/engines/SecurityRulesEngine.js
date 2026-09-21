@@ -155,9 +155,11 @@ class SecurityRulesEngine {
                 if (this.core[appRoleType]) {
                    
                     const generatedValue = this.core[appRoleType](sanitizeDoc, appRoles.managedBySystem.params);
+                   
                            
 
                     this._setNestedValue(sanitizeDoc, fieldName, generatedValue);
+                    record(DOMAIN.ODM_DOMAIN,EVENT_TYPES.SECURITY_SYSTEM_INJECT,EVENT_MTYPES.METRIC_C)
                     
                     auditLog(
                             DOMAIN.ODM_DOMAIN, 'system_field_injected', 
@@ -186,6 +188,8 @@ class SecurityRulesEngine {
             const { fieldName, strategy, options } = customCoreFunction[j];
             try {
                 const generatedValue = strategy(sanitizeDoc, options.params);
+                console.log(sanitizeDoc[fieldName])
+                if(isUpdate && sanitizeDoc?.[fieldName] === undefined) continue;
                 this._setNestedValue(sanitizeDoc, fieldName, generatedValue);
             } catch (err) {
                 throw new AppError(`Runtime Execution Failure inside custom type system handler '${options.type}': ${err.message}`, 500);
@@ -197,7 +201,6 @@ class SecurityRulesEngine {
         return sanitizeDoc;
     }catch(err){
 
-         record(DOMAIN.ODM_DOMAIN, EVENT_TYPES.SECURITY_RULE_BLOCKED, EVENT_MTYPES.METRIC_C);
         throw err;
     }
     }
