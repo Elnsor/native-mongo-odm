@@ -10,7 +10,7 @@ import { RoleBuilder } from "./builder/buildGroupRole.js";
 import { TYPE_IDS ,SYSTEM_STATUS} from "./constant/resourceType.js";
 import { record } from "../Monitor/monitoringSystem.js";
 import { EVENT_TYPES,EVENT_MTYPES ,DOMAIN} from "../Monitor/constant/eventType.js";
-import { initializeMonitoring } from "../Monitor/monitoringSystem.js";
+import { initializeMonitoring ,getMonitoring} from "../Monitor/monitoringSystem.js";
 
 /**
 * Interface for RBAC/ABAC  system 
@@ -25,11 +25,13 @@ export class RBACManager {
 
     constructor() {
         this.#authCheck = new AutherizationCheck();
+        if(getMonitoring().isEnabled) this.#initialized=true;
+        
     }
 
     /**
      * initailize system 
-     * @param {MonitoringInitOption} options - initialization Option
+     * @param {import ("./constant/typesDef.js").RBACOption} options - initialization Option
      * @returns {RBACManager}
      */
     initialize(options = {}) {
@@ -116,7 +118,7 @@ export class RBACManager {
 
 
             // build Worker
-            const worker = new RoleBinaryWorker(roleName, compiler);
+          
          
 
             // register Group Roles
@@ -129,6 +131,10 @@ export class RBACManager {
             }
 
              record(DOMAIN.RBAC_DOMAIN,EVENT_TYPES.RBAC_ROLE_REGISTERED,EVENT_MTYPES.METRIC_C);
+
+             /**
+              * @type {RoleBinaryWorker}
+              */
 
             const instance = RoleBaseBuckets.createRegisterRole(roleName, roleName, compiler);
             if (!instance || instance.code) {
@@ -218,8 +224,11 @@ export class RBACManager {
 
        // let start=0;
         let access=0;
+          
 
-        if(this.#initialized){
+        if(getMonitoring().isEnabled){
+          
+            
            
             const start =performance.now();
 
@@ -256,7 +265,7 @@ export class RBACManager {
         if (effects & 16) permissions.push('OWN');
         if (effects & 32) permissions.push('LIMITED');
         if (effects & 64) permissions.push('ALL');
-        if (effects & 128) permissions.push('create');
+      
         return permissions;
     }
 AllowedPrimaryTarget(primaryEffect,targetActionBit){
@@ -264,6 +273,22 @@ AllowedPrimaryTarget(primaryEffect,targetActionBit){
 }
 AllowedTargetToOthers(othersEffect,targetActionBit){
     return this.#authCheck.canPerformOnOthers(othersEffect,targetActionBit)
+}
+
+AllowedOwnerAction(primaryEffect,targetActionBit){
+    const action=this.#authCheck.getPrimaryAction(primaryEffect);
+    return ((action & targetActionBit) === targetActionBit )
+}
+
+AllowedOtherAction(primaryEffect,targetActionBit){
+    const action=this.#authCheck.getOthersAction(primaryEffect);
+    return ((action & targetActionBit) === targetActionBit )
+}
+getOwnerBoundary(primaryEffect){
+    return this.#authCheck.getPrimaryBoundary(primaryEffect)
+}
+getOtherBoundary(primaryEffect){
+    return this.#authCheck.getOthersBoundary(primaryEffect);
 }
 
 
@@ -336,3 +361,5 @@ AllowedTargetToOthers(othersEffect,targetActionBit){
         };
     }
 }
+
+export const rbacManager=new RBACManager()//.initialize({monitoring:{auditEnabled:true,enabled:true}})
