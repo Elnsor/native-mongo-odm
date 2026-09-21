@@ -35,7 +35,7 @@
 /**
  * @typedef {Object} MonitoringInitOption
  * @property {number} maxBufferSize -- the maximum logs records this buffer can hold 
- * @property {number} flushIntervalMs -- it unit melli Second 
+ * @property {number} flushIntervalMs -- it unit melle Second 
  * @property { path} logFilePath -- the path to file the need to save record to its
  * @property {boolean} auditEnabled -- enable auditing logger system 
  * @property {boolean} enabled -- enabled metrics system 

@@ -22,15 +22,21 @@ export const METRIC_NAMES = {
     // Compilation Metrics
     // ==========================================
     // Counter + Histogram
-    RBAC_COMPILE_COUNT: "rbac.compiler.compile.count",     // counter
+    RBAC_COMPILE_COUNT_S: "rbac.compiler.compile.count.s",     // counter
+    RBAC_COMPILE_COUNT_E: "rbac.compiler.compile.count.e",     // counter
     RBAC_COMPILE_DURATION: "rbac.compiler.compile.duration", // histogram
     RBAC_COMPILE_ERRORS: "rbac.compiler.compile.errors",   // counter
     RBAC_COMPILE_LAST_TIME: "rbac.compiler.compile.last_time", // gauge
+    RBAC_COMPILE_VALIDATION_S: "rbac.compiler.validation.count.s",     // counter
+    RBAC_COMPILE_VALIDATION_E: "rbac.compiler.validation.count.e", // counter 
+    RBAC_COMPILE_VALIDATION_DURATION: 'rbac.compiler.validation.duration' ,    // hist
     
     // ==========================================
     // Buffer & Memory Metrics
     // ==========================================
     // Gauge + Counter
+    RBAC_BUFFER_COUNT: "rbac.buffer.total", 
+    RBAC_BUFFER_SIZE_TOTAL: "rbac.buffer.size.total.byte",      // hist (elements)
     RBAC_BUFFER_SIZE: "rbac.buffer.size",                  // gauge (elements)
     RBAC_BUFFER_BYTES: "rbac.buffer.bytes",                // gauge (bytes)
     RBAC_BUFFER_OVERFLOW: "rbac.buffer.overflow",          // counter
@@ -81,6 +87,7 @@ export const METRIC_NAMES = {
     SECURITY_EVAL_TOTAL: "framework.security.eval.total",
     SECURITY_EVAL_DURATION: "framework.security.eval.duration",
     SECURITY_RULE_BLOCKED: "framework.security.rule.blocked",
+    SECURITY_SYSTEM_INJECT_TOTAL: "framework.security.system.inject.total",
 
     // ==========================================
     // Framework Core: Auth Token Metrics
