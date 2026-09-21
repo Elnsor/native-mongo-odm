@@ -4,7 +4,8 @@ import { applicationSchemaRegistry } from "./applicationSchemaRegistry.js";
 import { Projection } from "./engines/projectionEngine.js";
 import { record, auditLog } from "../Monitor/monitoringSystem.js";
 import { DOMAIN, EVENT_TYPES, EVENT_MTYPES } from "../Monitor/constant/eventType.js";
-
+import { rbacManager } from "../rbac/rbacManager.js";
+import { AppError } from "./appError.js";
 export class CollectionManager{
     constructor(){
         this.cache={};
@@ -82,10 +83,12 @@ export class CollectionManager{
  */
     async createCollectionv1(collectionName,update=false){
          const startTime = performance.now();
+        const notRegisteredError = "CollectionError: you must register your schema first !!";
+        const action = update ? 'update' : 'create'; 
        
         if(! applicationSchemaRegistry.isRegister(collectionName) ){
-            auditLog(DOMAIN.ODM_DOMAIN, 'collection_create_failed', { actor: 'system' }, { collection: collectionName }, 'failure', { error: err.message });
-            throw new Error("CollectionError: you must register your schema first !!"); 
+            auditLog(DOMAIN.ODM_DOMAIN,  `collection_${action}_failed`, { actor: 'system' }, { collection: collectionName }, 'failure', { error: notRegisteredError });
+           throw new AppError(notRegisteredError, 500); 
         }
     
         const db=getDb();
@@ -141,7 +144,8 @@ export class CollectionManager{
             const durationNs = (performance.now() - startTime) * 1000000;
             record(DOMAIN.ODM_DOMAIN, EVENT_TYPES.DB_QUERY_END, EVENT_MTYPES.METRIC_H, durationNs);
             auditLog(DOMAIN.ODM_DOMAIN, 'collection_update_failed', { actor: 'system' }, { collection: collectionName }, 'failure', { error: error.message });
-        console.error(`❌ Something went wrong when creating collection: ${collectionName}`, error);
+
+            console.error(`❌ Something went wrong when creating collection: ${collectionName}`, error);
             throw error; 
 
 
@@ -322,20 +326,12 @@ async syncAllCollectionOnBoot(registerInstanc){
             await collectionObject.createIndex(key, option);
         }
         this.cache[schemaName]=collectionObject
+       rbacManager.registerResource("COLLECTIONS",[schemaName]);
          const durationNs = (performance.now() - startTime) * 1000000;
         record(DOMAIN.ODM_DOMAIN, EVENT_TYPES.DB_TRANSACTION_COMMIT, EVENT_MTYPES.METRIC_H, durationNs); 
-
-
     }
 
-
-
-
 }
-
-
 }
-
-
 
 export const collectionManager= new CollectionManager();
