@@ -87,15 +87,16 @@ export class RowBinaryAllocator {
     }
    
     
-     translateChildGlobalToCompact(parentGlobal, childType, childGlobal) {
-        const parentMap = this.childCompactTree.get(parentGlobal);
-        if (!parentMap) return -1;
+   /**
+ * @param {number} parentGlobal - Parent Global Index
+ * @param {ResourcePid} childType - Child ResourcePid
+ * @param {number} childGlobal - Child Global Inde
+ * @return childCompact or -1 if not fount 
+**/
+translateChildGlobalToCompact(parentGlobal, childType, childGlobal,level=2) {
 
-        const childTypeMap = parentMap.get(childType);
-        if (!childTypeMap) return -1;
-
-        return childTypeMap.get(childGlobal) ?? -1;
-    }
+    if(level == 2) return this.roles.get2KeyChildCompact(parentGlobal,childType,childGlobal);
+}
 
     /**
    * @param {number} parentGlobal - Parent Global Index
@@ -111,7 +112,7 @@ export class RowBinaryAllocator {
         const childTypeMap = parentMap.get(childType);
         if (!childTypeMap) return -1;
 
-        return childTypeMap.get(childGlobal) ?? -1;
+         return childTypeMap.get(childGlobal) ?? childTypeMap.get(this.wildcard) ?? -1;
     }
     /**
    
