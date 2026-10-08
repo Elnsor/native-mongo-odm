@@ -1,23 +1,4 @@
-/**
- * each GroupRole Have its own Class
- * to create new group class it must rigester it first in this bucket 
- * its register by its Id and class 
- * when you need to instantiated GroupRoleClass you do by using createRegisterRole() method
- * this instance are also saved in insBucket
- * -------------------
- * another used cases of this class 
- * when Group Role is Active an one of its resources instance targted by this role is deleted whey apply update 
- * to this class to got same GroupRole class but without deleted instance
- * 
- * ---- 
- * another usig case of this 
- * when one member role of GroupRole are expired  
- * any expired member are saved in expiredBucket so this save member are then deleted form its GroupRole after Update its 
- * own GroupClass 
- * 
- * --
- * any update are done in atomic way and its operation happen in background 
- */
+
 
 import { fastDeepClone } from "./../utils/utils.js";
 import { SYSTEM_STATUS,TYPE_IDS_NAME } from "../constant/resourceType.js";
@@ -27,6 +8,35 @@ import { RoleBinaryWorker } from "../allocator/binary-worker.js";
 
 import { record } from "../../Monitor/monitoringSystem.js";
 import { EVENT_TYPES, EVENT_MTYPES ,DOMAIN} from "../../Monitor/constant/eventType.js";
+import e from "express";
+
+/**
+ * ### RoleBuckets
+ * - each GroupRole Have its own Class
+ * to create new group class it must register it first in this bucket 
+ * its register by its Id and class 
+ * -when you need to instantiated GroupRoleClass you do by using **createRegisterRole()** method
+ * this instance are also saved in insBucket
+ * -when role are saved in insBucket its state is active
+ * -------------------
+ * - #### another used cases of this class 
+ * - **Not allowed for Delete Any Parent Resource Instance Linked to Active Role :-**
+ * - when Group Role is Active and one of its resources instance targted by this role is need to be delete , the deletion of this instance is denied becouse its linked to active role 
+ * if the Grroup Role is Active meaning its have Role instace save in insBucket you cant delete it 
+ * ---- 
+ * - ### another usig case of this 
+ * 
+ * ### **Expired and Update**  
+ * - when one member role of GroupRole are expired
+ * - any expired member are saved in expiredBucket so this save member are then deleted form its GroupRole after Update its 
+ * - the operation of revocing expired member is done on **background** so its **not blocking operation** and its done in **Atomic** way
+ * - the expired backed have two window to **trigger** flush its content and begin the atomic update for GroupRole for each expired members 
+ * - **threshold window (Batch):** is act as threshold by default its 50 if the bucket contain 50 expired member its trigger flush 
+ * - **time window :** by defualt its 5 seconde (timer intervel )if the bucket size is less than its threshold its not triggering flush until the time window is elapsed then its trigger flush operation 
+ * 
+ * --
+ * any update are done in atomic way and its operation happen in background 
+ */
 export class RoleBaseBuckets {
 
     static bucket = new Map();
@@ -35,6 +45,10 @@ export class RoleBaseBuckets {
     static isFlushing = false;
     // Reverse lookup: res_pid -> Map<instanceIndex, Set<GroupPid>>
     static instanceToRoles = new Map();
+     //  DUAL-WINDOW CONFIGURATION FOR EXPIRATION BUCKETS
+    static BATCH_THRESHOLD = 50;       // Flush immediately if bucket reaches 50 entries
+    static FLUSH_INTERVAL_MS = 5000;   // Flush every 5 seconds if bucket has entries
+    static flushTimer = null;          // Holds the reference to the pending timeout
 
     /**
      * Registers a role class it must be Class not instance of it definition into the primary bucket.
@@ -44,7 +58,7 @@ export class RoleBaseBuckets {
      */
     static registerNewRole(GroupRoleName, RoleClass) {
         const GroupPid = resourceInstance.getRoleId(GroupRoleName);
-        if (!GroupPid || this.bucket.has(GroupPid)) return {code:SYSTEM_STATUS.ROLE_EXISTS,message:'Same Group Role Pid are registered in this Buckets'};
+        if (!GroupPid || this.bucket.has(GroupPid)) return {code:SYSTEM_STATUS.ROLE_EXISTS,message:`RoleBucketError: Same Group Role Pid are registered in this Buckets`};
 
         this.bucket.set(GroupPid, RoleClass);
        
@@ -55,7 +69,7 @@ export class RoleBaseBuckets {
      * Maps parent instance indices from a worker role to instanceToRoles index.
      * Zero-allocation iteration over Set instances.
      * parent => parent Instance => roleBucket[Role id ]
-     * it tell us this resource instance are targted by thus GroupRoles
+     * it tell us this resource instance are targted by thus GroupRoles so we cant deleted it 
      * 
      * @param {RoleBinaryWorker} insClass 
      */
@@ -117,19 +131,22 @@ export class RoleBaseBuckets {
 
     /**
      * Instantiates and registers an active role instance.
+     * @param {String} GroupRoleName
+     * @param {*} args
+     * @returns {RoleBinaryWorker} insClass 
      */
     static createRegisterRole(GroupRoleName, ...args) {
         const GroupPid = resourceInstance.getRoleId(GroupRoleName);
-        if (!GroupPid) return { code: SYSTEM_STATUS.INVALID_ROLE_ID, message: `RegisterRole Error: Not Valid GroupRoleName ${GroupRoleName}` };
+        if (!GroupPid) return { code: SYSTEM_STATUS.INVALID_ROLE_ID, message: `RoleBucketError:  RegisterRole Error: Not Valid GroupRoleName ${GroupRoleName}` };
         if (!this.bucket.has(GroupPid) || this.insBucket.has(GroupPid)) {
-            return { code: SYSTEM_STATUS.RESOURCE_NOT_FOUND, message: `RegisterRole Error: No class in Bucket or instance already exists for ${GroupRoleName}` };
+            return { code: SYSTEM_STATUS.RESOURCE_NOT_FOUND, message: `RoleBucketError:  RegisterRole Error: No class in Bucket or instance already exists for ${GroupRoleName}` };
         }
 
         const RoleClass = this.bucket.get(GroupPid);
         const insClass = new RoleClass(...args);
         if (!insClass){
             
-            return { code: SYSTEM_STATUS.UNCOMPILED_WORKER, message: `RegisterRole Error: Failed to instantiate class for ${GroupRoleName}`}
+            return { code: SYSTEM_STATUS.UNCOMPILED_WORKER, message: `RoleBucketError:  RegisterRole Error: Failed to instantiate class for ${GroupRoleName}`}
         }
 
         this.insBucket.set(GroupPid, insClass);
@@ -144,6 +161,7 @@ export class RoleBaseBuckets {
      * Returns an array snapshot of all active GroupRolePids bound to a specific instance index.
      * @param {ResourcePid} res_pid
      * @param {number} instanceIndex
+     * @returns {Array<number>} [roleId,] or []
      */
     static getActiveRolesForInstance(res_pid, instanceIndex) {
         const resMap = this.instanceToRoles.get(res_pid);
@@ -151,6 +169,23 @@ export class RoleBaseBuckets {
 
         const rolesSet = resMap.get(instanceIndex);
         return rolesSet ? Array.from(rolesSet) : [];
+    }
+
+     /**
+     * Returns true if this reources Parent instance is bound to Actives roles if not bound return false 
+     * @param {ResourcePid} res_pid
+     * @param {number} instanceIndex
+     * @returns {boolean} true | false
+     */
+
+    static isParentReourceInstanceActive(res_pid, instanceIndex){
+
+         const resMap = this.instanceToRoles.get(res_pid);
+        if (!resMap) return false
+
+        const rolesSet = resMap.get(instanceIndex);
+        return rolesSet ? rolesSet.size > 0 : false;
+
     }
 
     /**
@@ -170,7 +205,16 @@ export class RoleBaseBuckets {
 
     static getInsRegisterRole(GroupRoleName) {
         const GroupPid = resourceInstance.getRoleId(GroupRoleName);
-        return GroupPid ? (this.insBucket.get(GroupPid) || null) : null;
+        if(GroupPid?.code !== undefined) return {code:SYSTEM_STATUS.ROLE_NOT_FOUND, message : `RoleBucketError:  :${GroupPid.message} `};
+        return this.insBucket.get(GroupPid) ?? {code:SYSTEM_STATUS.ROLE_NOT_FOUND, message: `RoleBucketError:  : Role Not Found in Active buckets`};
+    }
+    static isRoleActiveByName(GroupRoleName) {
+        const GroupPid = resourceInstance.getRoleId(GroupRoleName);
+        if(GroupPid?.code !== undefined) return false;
+        return this.insBucket.has(GroupPid);
+    }
+    static isRoleActiveById(GroupPid) {
+        return this.insBucket.has(GroupPid);
     }
 /**
      * get GroupRoleClass instance from insBucket by GroupRoleId
@@ -180,11 +224,17 @@ export class RoleBaseBuckets {
         return this.insBucket.get(GroupPid) || null;
     }
 
-   
+  /**
+   * used this method if need to replace exist Active role with new fresh one the new one take same old Role id 
+   * @param {String} groupRoleName 
+   * @param {Object} newDefinition 
+   * @param {*} options 
+   * @returns  
+   */ 
 static replaceRoleDefinition(groupRoleName, newDefinition, options = {}) {
     const GroupPid = resourceInstance.getRoleId(groupRoleName);
     if (!GroupPid || !this.insBucket.has(GroupPid)) {
-        return { code: SYSTEM_STATUS.ROLE_NOT_FOUND, message: `Role ${groupRoleName} not found or not active` };
+        return { code: SYSTEM_STATUS.ROLE_NOT_FOUND, message: `RoleBucketError:  Role ${groupRoleName} not found or not active` };
     }
 
     try {
@@ -193,7 +243,7 @@ static replaceRoleDefinition(groupRoleName, newDefinition, options = {}) {
         const compileResult = newCompiler.compile();
         
         if (compileResult !== true) {
-            return { code: SYSTEM_STATUS.RECOMPILE_FAILED, message: `Compilation failed: resource Code:${compileResult.code}-${compileResult.message}` };
+            return { code: SYSTEM_STATUS.RECOMPILE_FAILED, message: `RoleBucketError:  Compilation failed: resource Code:${compileResult.code}-${compileResult.message}` };
         }
 
         const newWorker = new RoleBinaryWorker(groupRoleName, newCompiler);
@@ -202,21 +252,56 @@ static replaceRoleDefinition(groupRoleName, newDefinition, options = {}) {
         const swapResult = this.updateExistedInstanceRole(groupRoleName, newWorker);
         
         return swapResult === true 
-            ? { code: SYSTEM_STATUS.SUCCESS, message: `Role ${groupRoleName} replaced successfully` }
+            ? { code: SYSTEM_STATUS.SUCCESS, message: `RoleBucketError:  Role ${groupRoleName} replaced successfully` }
             : swapResult;
 
     } catch (error) {
-        return { code: SYSTEM_STATUS.RECOMPILE_FAILED, message: `Update error: ${error.message}` };
+        return { code: SYSTEM_STATUS.RECOMPILE_FAILED, message: `RoleBucketError:  Update error: ${error.message}` };
     }
   
 }
-    // 1. Lightweight, non-blocking addition to the bucket
+
+/**
+ *   scheduling: Triggers based on Batch Size OR Time Window
+ * this for triggering flush operation 
+ */
+static scheduleBackgroundFlush() {
+    // 1. If already flushing, do nothing (the recursive check in `finally` will handle leftovers)
+    if (this.isFlushing) return;
+
+    // 2. BATCH WINDOW: If we hit the threshold, flush immediately
+    if (this.expiredBucket.size >= this.BATCH_THRESHOLD) {
+        this.cancelPendingFlush();
+        this.triggerBackgroundFlush();
+        return;
+    }
+
+    // 3. TIME WINDOW: If no timer is running, start one
+    if (!this.flushTimer) {
+      
+        this.flushTimer = setTimeout(() => {
+        this.triggerBackgroundFlush();
+        }, this.FLUSH_INTERVAL_MS);
+    }
+}
+
+/**
+ * Clears the pending time window timer
+    */
+static cancelPendingFlush() {
+    if (this.flushTimer) {
+        clearTimeout(this.flushTimer);
+        this.flushTimer = null;
+    }
+}
+
+    //  Lightweight, non-blocking addition to the bucket
     /**
-     * any active group roles have its member expired it add it expired bucket to in feature update this active roles 
+     * any active group roles have its member expired its added to expired bucket .. in feature update this active roles 
      * Mebmer role are targted resouces Caled Leaf and its have Id and it member of GroupRoleId    
-     * @param {number} roleId 
-     * @param {number} memberId 
-     * @param {ResourcePid} leafId 
+     * @param {number} roleId -- Role Id 
+     * @param {number} memberId -- Role Memeber Id 
+     * @param {ResourcePid} leafId -- Leaf Type 
      */
     static addToExpierdBucket(roleId, memberId, leafId) {
         if (!this.expiredBucket.has(roleId)) {
@@ -231,12 +316,14 @@ static replaceRoleDefinition(groupRoleName, newDefinition, options = {}) {
         const member = role.get(memberId);
         member.add(leafId);
 
-        // Trigger background processing without blocking current execution
-        this.triggerBackgroundFlush();
+        // run schedule background processing for checking threshold 
+        this.scheduleBackgroundFlush();
     }
 
-    // 2. Safely trigger background execution via the event loop queue
+    //  Safely trigger background execution via the event loop queue
     static triggerBackgroundFlush() {
+        this.cancelPendingFlush(); 
+       
         if (this.isFlushing || this.expiredBucket.size === 0) return;
         this.isFlushing = true;
 
@@ -251,63 +338,123 @@ static replaceRoleDefinition(groupRoleName, newDefinition, options = {}) {
                 
                 // If new expirations accumulated while flushing, loop back
                 if (this.expiredBucket.size > 0) {
-                    this.triggerBackgroundFlush();
+                     this.scheduleBackgroundFlush();
                 }
             }
         });
     }
 
-    // 3. Asynchronous processing loop with event-loop yielding
-    static async flushExpiredBucketAsync() {
-        // Extract entries and clear the active bucket so new expirations can be collected concurrently
-        const entries = Array.from(this.expiredBucket.entries());
-        this.expiredBucket.clear();
+    /**
+     * this method run the flushing Atomic Operation
+     */
 
-        for (const [roleId, membersMap] of entries) {
-            /** @type {RoleBinaryWorker} */
-            const currentWorker = this.getInsRegisterRoleByPID(roleId);
-            if (!currentWorker) continue;
+static async flushExpiredBucketAsync() {
+     
+    const entries = Array.from(this.expiredBucket.entries());
+    this.expiredBucket.clear();
+    const now = Math.floor(Date.now() / 1000);
 
-            let listOfGroupsClone = fastDeepClone(currentWorker.roles.ListOfGroups);
-            let hasChanges = false;
+    for (const [roleId, membersMap] of entries) {
+        const currentWorker = this.getInsRegisterRoleByPID(roleId);
+        if (!currentWorker) continue;
 
-            for (const [memberId, leafSet] of membersMap.entries()) {
-                const memberName = resourceInstance.getRoleMemberNameByIndexed(roleId, memberId);
+        //  Clone ONLY the JSON data (cheap shallow clone)
+        // The live worker is completely untouched. (Atomic)
+       
+        const clonedMemberGroups = { ...currentWorker.roles.ListOfMemberGroups };
+        let hasChanges = false;
 
-                 if (!memberName || !listOfGroupsClone[memberName]) continue; 
-                
-                if (listOfGroupsClone[memberName]) {
-                    for (const leafId of leafSet) {
-                        const leafName = TYPE_IDS_NAME[leafId];
-                        
-                        if (listOfGroupsClone[memberName][leafName] !== undefined) {
-                            listOfGroupsClone[memberName][leafName] = null;
+       
+        //  Mutate the CLONE (surgical removal of expired owners)
+       
+        for (const [memberId, leafSet] of membersMap.entries()) {
+            const memberName = currentWorker.roles.getRoleMemberNameById(memberId);
+
+            if (!clonedMemberGroups[memberName]) continue;
+
+            for (const leafId of leafSet) {
+                const leafName = TYPE_IDS_NAME[leafId];
+                const rule = clonedMemberGroups[memberName][leafName];
+                if (!rule) continue;
+
+                if (rule.nestedOwnersMap) {
+                    const newNestedArray = [];
+                    for (const nestedEntry of rule.nestedOwnersMap) {
+                        const beforeLength = nestedEntry.allowedOwners.length;
+                        nestedEntry.allowedOwners = nestedEntry.allowedOwners.filter(
+                            owner => !(owner.ttl > 0 && now >= owner.ttl)
+                        );
+                        if (nestedEntry.allowedOwners.length < beforeLength) {
                             hasChanges = true;
                         }
+                        if (nestedEntry.allowedOwners.length > 0) {
+                            newNestedArray.push(nestedEntry);
+                        }
+                    }
+                    if (newNestedArray.length > 0) {
+                        rule.nestedOwnersMap = newNestedArray;
+                    } else {
+                        clonedMemberGroups[memberName][leafName] = null;
+                    }
+                } else if (rule.ownerInstance) {
+                    const beforeLength = rule.ownerInstance.length;
+                    rule.ownerInstance = rule.ownerInstance.filter(
+                        owner => !(owner.ttl > 0 && now >= owner.ttl)
+                    );
+                    if (rule.ownerInstance.length < beforeLength) {
+                        hasChanges = true;
+                    }
+                    if (rule.ownerInstance.length === 0) {
+                        clonedMemberGroups[memberName][leafName] = null;
                     }
                 }
             }
-
-            // Heavy compilation and buffer swap happens safely in the background
-           if (hasChanges) {
-                     const groupName = currentWorker.roles.groupRoleName;
-            
-           
-                   const result = this.replaceRoleDefinition(groupName, listOfGroupsClone, {
-                    reason: "TTL expiration cleanup"
-            });
-            
-            if (result.code !== SYSTEM_STATUS.SUCCESS) {
-                console.error(`[RBAC] Failed to flush expired bucket for role ${groupName}:`, result.message);
-            }
         }
+
+        if (!hasChanges) continue;
+
+       //Create a FRESH compiler with the cloned data
+        // Live worker remains untouched. If this fails, system keeps working (act as rolleback).
+        const GroupName = currentWorker.roles.groupRoleName;
+        /**
+         * @type {RoleCompiler}
+         */
+        const freshCompiler = new RoleCompiler(GroupName, clonedMemberGroups, true);
         
+        // Inject the surgically cleaned data
+        freshCompiler.ListOfMemberGroups = clonedMemberGroups;
+        freshCompiler.memberTableMap=new Map(currentWorker.roles.memberTableMap)
+        freshCompiler.ListOfGroups=currentWorker.ListOfGroups;
 
-            // Yield control back to the event loop between roles 
-            // This prevents CPU starvation if multiple massive roles expire simultaneously
-            await new Promise(resolve => setImmediate(resolve));
+        // Run the fast-path (skips heavy merge phase)
+        const roleIdForCompile = resourceInstance.getRoleId(GroupName);
+        const compileResult = freshCompiler.parentToLeafMap(clonedMemberGroups, roleIdForCompile);
+        
+        if (compileResult !== true) {
+            //  COMPILATION FAILED — Log and continue
+            //  LIVE WORKER IS STILL INTACT AND SERVING REQUESTS
+            console.error(`[RBAC] RoleBucketsError: ExpirationUpdateError: Recompilation failed for role ${GroupName}:${roleIdForCompile} , compileResult`);
+            continue;
         }
+
+        // Recalculate striders on fresh compiler
+        freshCompiler.calculateTotalStridersSchemaSlice();
+
+      
+        // Build new worker from fresh compiler
+      
+        const newWorker = new RoleBinaryWorker(GroupName, freshCompiler);
+        newWorker.addRolesValuseToRowBinary();
+
+       
+        //  Atomic hot-swap (only happens on total success)
+       
+        this.updateExistedInstanceRole(GroupName, newWorker);
+
+        // Yield to event loop none blocking
+        await new Promise(resolve => setImmediate(resolve));
     }
+}
 
 
     /**
@@ -344,15 +491,15 @@ static replaceRoleDefinition(groupRoleName, newDefinition, options = {}) {
     static updateExistedInstanceRole(GroupRoleName, preCompiledWorkerInstance) {
         const GroupPid = resourceInstance.getRoleId(GroupRoleName);
         if (!GroupPid) {
-            return { code:SYSTEM_STATUS.INVALID_ROLE_ID, message: `Update Error: Invalid GroupRoleName ${GroupRoleName}` };
+            return { code:SYSTEM_STATUS.INVALID_ROLE_ID, message: `RoleBucketError:  Update Error: Invalid GroupRoleName ${GroupRoleName}` };
         }
 
         if (!this.insBucket.has(GroupPid)) {
-            return { code: SYSTEM_STATUS.RESOURCE_NOT_FOUND, message: `Update Error: Instance bucket is not initialized` };
+            return { code: SYSTEM_STATUS.RESOURCE_NOT_FOUND, message: `RoleBucketError:  Update Error: Instance bucket is not initialized` };
         }
 
         if (!preCompiledWorkerInstance || !preCompiledWorkerInstance.buffer) {
-            return { code: SYSTEM_STATUS.RECOMPILE_FAILED, message: `Update Error: Invalid or uncompiled worker instance provided` };
+            return { code: SYSTEM_STATUS.RECOMPILE_FAILED, message: `RoleBucketError:  Update Error: Invalid or uncompiled worker instance provided` };
         }
 
         // 1. Purge old index mapping
@@ -370,49 +517,4 @@ static replaceRoleDefinition(groupRoleName, newDefinition, options = {}) {
         return true;
     }
 
-    
-    /**
-     * it used removed any expired role member from roleGroup and updated current active RoleGroup in Atomic way 
-     * @param {number} roleId 
-     * @param {number} memberId 
-     * @param {ResourcePid} leafId 
-     * @returns 
-     */
-
-    static safeRecompileAndHotSwapv1(roleId, memberId, leafId) {
-
-        
-
-        /**
-         * @type {RoleBinaryWorker}
-         */
-        const currentWorker =  this.getInsRegisterRoleByPID(roleId);
-        const memberName=resourceInstance.getRoleMemberNameByIndexed(roleId,memberId);
-        let listOfGroupsClone=fastDeepClone(currentWorker.roles.ListOfGroups)
-       
-          
-       
-        const leafName=TYPE_IDS_NAME[leafId]
-        if (listOfGroupsClone[memberName]) {
-        listOfGroupsClone[memberName][leafName] = null;
     }
-        
-        const GroupName=currentWorker.roles.groupRoleName;
-       
-
-        const newCompile=new RoleCompiler(GroupName,listOfGroupsClone,true);
-        const result=newCompile.compile();
-        if(result !== true) return {code:SYSTEM_STATUS.RECOMPILE_FAILED,message:`Resource Code ${result.code}-${result.message}`};
-        
-
-        const newWorker = new RoleBinaryWorker(GroupName, newCompile);
-        newWorker.addRolesValuseToRowBinary();
-       
-       
-      
-        return this.updateExistedInstanceRole(GroupName, newWorker);
-    }
-
-  
-
-   }
