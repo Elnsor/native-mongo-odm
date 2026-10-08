@@ -15,121 +15,148 @@ export class AutherizationCheck {
     getRole(GroupPid) {
         return this.registerdRoles.get(GroupPid);
     }
+
+    /**
+     *  #### CheckAccess 
+     *  - used for reading buffer to get effect action of the resources or deniend 
+     * @param {number} GroupRoleId -- Role Id
+     * @param {import("../constant/typesDef.js").ResourcePid} parentId 
+     * @param {number } parentInstanceIndex 
+     * @param {import("../constant/typesDef.js").ResourcePid} child 
+     * @param {number } childInstanceIndex 
+     * @param {import("../constant/typesDef.js").ResourcePid} grandChild 
+     * @param {number} grandChildIndex 
+     * @param {number} timeStamp -- time number 
+     * @returns {number} return effected action number or message code for fail 
+     */
    
-checkAccess(GroupRoleId, parentId, parentInstanceIndex, child = null, childInstanceIndex = null, grandChild = null, grandChildIndex = null){
+checkAccess(GroupRoleId, parentId, parentInstanceIndex, child = null, childInstanceIndex = null, grandChild = null, grandChildIndex = null,timeStamp=Math.floor(Date.now()/1000)) {
+
+        let parnetIns = parentInstanceIndex;
+
+
+
+        let wildCard = false;
+        let grandChildCompact = null;
+        let childCompact = null;
+
+        /** @type {RoleBinaryWorker} */
+        const role = this.getRole(GroupRoleId);
+        // if role id class not fount 
+        if (!role) return { code: SYSTEM_STATUS.ACCESS_DENIED, message: `${SYSTEM_STATUS.ROLE_NOT_FOUND} Role Not found` };
+
+
+        // check if this child are for global role 
+        childCompact = role.translateChildGlobalToCompact(parnetIns, child, childInstanceIndex);
+
+
+
+        if (childCompact === -1) {
+            // no this child have no global role check if its in  wild card role 
+            childCompact = role.translateWildCardGlobalToCompact(parentId, child, childInstanceIndex);
+            wildCard = true;
+
+        }
+
+        // if not in both the access denied 
+        if (childCompact === -1) {
+            return { code: SYSTEM_STATUS.ACCESS_DENIED, message: "Child instance not in role" };
+        }
+
+        if (grandChild !== null) {
+
+            if (wildCard) {
+                grandChildCompact = role.translateWildCardGlobalToCompact(parentId, grandChild, grandChildIndex);
+
+            } else {
+
+                grandChildCompact = role.roles.getNestedFlaten2keyGrandChildCompact(parnetIns,grandChild,childInstanceIndex,grandChildIndex);
+
+            }
+
+            if (grandChildCompact === -1) {
+
+                return { code: SYSTEM_STATUS.ACCESS_DENIED, message: "grand Child instance not in role" };
+
+            }
+        }
+
+
+
+        let access = null;
+
+
+        if (wildCard) {
+
+            if (role.globalStriders && role.globalStriders[parentId]) {
+                parnetIns = role.wildcard;
+
+                access = role.geteffectedAccess(GroupRoleId, parentId, parnetIns, child, childCompact, grandChild, grandChildCompact,timeStamp)
+            } else {
+                return { code: SYSTEM_STATUS.ACCESS_DENIED, message: `no wildCard for this parent type ${parentId}` }
+            }
+
+        } else {
+            access = role.geteffectedAccess(
+                GroupRoleId,
+                parentId,
+                parnetIns,
+                child,
+                childCompact,
+                grandChild,
+                grandChildCompact,
+                timeStamp
+            );
+
+        }
+
+        // if access are conatin effective value the return it else continue to check ttl 
+        if (access && access?.code === undefined) return access;
+
+        // check if this access is expired triger or add 
+        if (access && access.code === SYSTEM_STATUS.PERMISSION_EXPIRED) {
+            const newAddr = role.geteffected(GroupRoleId, parentId, parnetIns, child, childCompact, grandChild, grandChildCompact);
+
+            // checking address type
+            if (typeof newAddr === 'number') {
+                const memberId = role.getEffectedValue(newAddr + 1);
+                const expiredResourceType = grandChild ? grandChild : child;
+                RoleBaseBuckets.addToExpierdBucket(GroupRoleId, memberId, expiredResourceType);
+                /**
+                 * new version get address 
+                 * initialized ttl to zero its not trigring again 
+                 * initialize action to zere the is denieded
+                 */
+                 role.setWorkerValueToAddr(newAddr + 2, 0);
+                // Set Effects to 0 (NONE) so access is implicitly denied
+                 role.setWorkerValueToAddr(newAddr + 3, 0);
+            }
+        }
+
+        return access; // 
+
+    }
+
+
+ /**
+     *  #### CheckAccess with auditting and Monitoring 
+     *  - used for reading buffer to get effect action of the resources or deniend 
+     * @param {number} GroupRoleId -- Role Id
+     * @param {import("../constant/typesDef.js").ResourcePid} parentId 
+     * @param {number } parentInstanceIndex 
+     * @param {import("../constant/typesDef.js").ResourcePid} child 
+     * @param {number } childInstanceIndex 
+     * @param {import("../constant/typesDef.js").ResourcePid} grandChild 
+     * @param {number} grandChildIndex 
+     * @param {number} timeStamp -- time number 
+     * @returns {number} return effected action number or message code for fail 
+     */
+checkAccessWithMonitor(GroupRoleId, parentId, parentInstanceIndex, child = null, childInstanceIndex = null, grandChild = null, grandChildIndex = null,timeStamp=Math.floor(Date.now()/1000)){
   
-  let parnetIns=parentInstanceIndex;
-    
-
- 
- let wildCard=false;
- let grandChildCompact= null;
- let childCompact= null;
-
- /** @type {RoleBinaryWorker} */
- const role = this.getRole(GroupRoleId);
-          // if role id class not fount 
-     if (!role) return  {code:SYSTEM_STATUS.ACCESS_DENIED,message: `${SYSTEM_STATUS.ROLE_NOT_FOUND} Role Not found`};
-
      
-     // check if this child are for global role 
-     childCompact=role.translateChildGlobalToCompact(parnetIns,child,childInstanceIndex);
-
-     childCompact=childCompact < 0 ? role.translateChildGlobalToCompact(parnetIns,child,role.wildcard) : childCompact;
-
-  
-
-    if (childCompact === -1) {
-        // no this child have no global role check if its in  wild card role 
-                   childCompact=role.translateWildCardGlobalToCompact(parentId,child,childInstanceIndex);
-                   childCompact=childCompact < 0 ? role.translateWildCardGlobalToCompact(parentId,child,role.wildcard) : childCompact;
-                   wildCard=true;
-   
-    }
-
-    // if not in both the access denied 
-    if(childCompact === -1){
-     return { code: SYSTEM_STATUS.ACCESS_DENIED, message: "Child instance not in role" };
-    }
-
-    if(grandChild !== null){
-
-        if(wildCard){
-            grandChildCompact=role.translateWildCardGlobalToCompact(parentId,grandChild,grandChildIndex);
-             grandChildCompact= grandChildCompact < 0 ? role.translateWildCardGlobalToCompact(parentId,grandChild,role.wildcard) : grandChildCompact;
-
-        }else{
-
-            grandChildCompact=role.translateChildGlobalToCompact(parnetIns,grandChild,grandChildIndex);
-            grandChildCompact= grandChildCompact < 0 ? role.translateChildGlobalToCompact(parnetIns,grandChild,role.wildcard): grandChildCompact;
-
-        }
-
-        if (grandChildCompact === -1){
-
-            return { code: SYSTEM_STATUS.ACCESS_DENIED, message: "grand Child instance not in role" };
-
-        }
-    }
-
-
-    
- let access= null;
- 
-
-  if(wildCard){
-
-    if (role.globalStriders && role.globalStriders[parentId]) {
-        parnetIns=role.wildcard;
-
-        access = role.geteffectedAccess(GroupRoleId, parentId, parnetIns, child, childCompact, grandChild, grandChildCompact)
-    }else{
-        return {code:SYSTEM_STATUS.ACCESS_DENIED,message:`no wildCard for this parent type ${parentId}`}
-    }
-
-  }else{
-     access = role.geteffectedAccess(
-        GroupRoleId, 
-        parentId, 
-        parnetIns, 
-        child, 
-        childCompact, 
-        grandChild, 
-        grandChildCompact
-    );
-
-  } 
-
-
-    // if access are conatin effective value the return it else continue to check ttl 
-if (access && access?.code === undefined) return access;
-
-  
-
-  
-   // check if this access is expired triger or add 
-    if (access && access.code === SYSTEM_STATUS.PERMISSION_EXPIRED) {
-        const newAddr = role.geteffected(GroupRoleId, parentId, parnetIns, child, childCompact, grandChild, grandChildCompact);
-        
-        // checking address type
-        if (typeof newAddr === 'number') {
-            const memberId = role.getEffectedValue(newAddr + 1);
-            const expiredResourceType = grandChild ? grandChild : child;
-            RoleBaseBuckets.addToExpierdBucket(GroupRoleId, memberId, expiredResourceType);
-        }
-    }
-  
-    return access; // 
-
-}
-
-checkAccessWithMonitor(GroupRoleId, parentId, parentInstanceIndex, child = null, childInstanceIndex = null, grandChild = null, grandChildIndex = null){
-  
-     
-      record(DOMAIN.RBAC_DOMAIN,EVENT_TYPES.RBAC_AUTH_CHECK,EVENT_MTYPES.METRIC_C);
+    record(DOMAIN.RBAC_DOMAIN,EVENT_TYPES.RBAC_AUTH_CHECK,EVENT_MTYPES.METRIC_C);
 
     let parnetIns=parentInstanceIndex;
-    
 
  
  let wildCard=false;
@@ -139,7 +166,6 @@ checkAccessWithMonitor(GroupRoleId, parentId, parentInstanceIndex, child = null,
  /** @type {RoleBinaryWorker} */
  const role = this.getRole(GroupRoleId);
           // if role id class not fount 
-
           
      if (!role)   {
 
@@ -147,12 +173,9 @@ checkAccessWithMonitor(GroupRoleId, parentId, parentInstanceIndex, child = null,
         
         return {code:SYSTEM_STATUS.ACCESS_DENIED,message: `${SYSTEM_STATUS.ROLE_NOT_FOUND} Role Not found`}
     };
-
      
      // check if this child are for global role 
      childCompact=role.translateChildGlobalToCompact(parnetIns,child,childInstanceIndex);
-
-  
 
     if (childCompact === -1) {
         // no this child have no global role check if its in  wild card role 
@@ -174,7 +197,7 @@ checkAccessWithMonitor(GroupRoleId, parentId, parentInstanceIndex, child = null,
 
         }else{
 
-            grandChildCompact=role.translateChildGlobalToCompact(parnetIns,grandChild,grandChildIndex);
+              grandChildCompact = role.roles.getNestedFlaten2keyGrandChildCompact(parnetIns,grandChild,childInstanceIndex,grandChildIndex);
 
         }
 
@@ -186,7 +209,6 @@ checkAccessWithMonitor(GroupRoleId, parentId, parentInstanceIndex, child = null,
         }
     }
 
-
     
  let access= null;
  
@@ -196,7 +218,7 @@ checkAccessWithMonitor(GroupRoleId, parentId, parentInstanceIndex, child = null,
     if (role.globalStriders && role.globalStriders[parentId]) {
         parnetIns=role.wildcard;
 
-        access = role.geteffectedAccess(GroupRoleId, parentId, parnetIns, child, childCompact, grandChild, grandChildCompact)
+        access = role.geteffectedAccess(GroupRoleId, parentId, parnetIns, child, childCompact, grandChild, grandChildCompact,timeStamp)
     }else{
        
         record(DOMAIN.RBAC_DOMAIN,EVENT_TYPES.RBAC_AUTH_DENIED,EVENT_MTYPES.METRIC_C)
@@ -211,7 +233,8 @@ checkAccessWithMonitor(GroupRoleId, parentId, parentInstanceIndex, child = null,
         child, 
         childCompact, 
         grandChild, 
-        grandChildCompact
+        grandChildCompact,
+        timeStamp,
     );
 
   } 
@@ -219,15 +242,12 @@ checkAccessWithMonitor(GroupRoleId, parentId, parentInstanceIndex, child = null,
 
     // if access are conatin effective value the return it else continue to check ttl 
 if (access && access?.code === undefined) return access;
-
-  
-
   
    // check if this access is expired triger or add 
     if (access && access.code === SYSTEM_STATUS.PERMISSION_EXPIRED) {
         const newAddr = role.geteffected(GroupRoleId, parentId, parnetIns, child, childCompact, grandChild, grandChildCompact);
 
-          record(DOMAIN.RBAC_DOMAIN,EVENT_TYPES.RBAC_AUTH_EXPIRED,EVENT_MTYPES.METRIC_C);
+          record(EVENT_TYPES.RBAC_AUTH_EXPIRED,EVENT_MTYPES.METRIC_C);
         
         // checking address type
         if (typeof newAddr === 'number') {
@@ -240,6 +260,7 @@ if (access && access?.code === undefined) return access;
     return access; // 
 
 }
+
 
 getPrimary(packed32){
     return (packed32 & 0xFFFF)
@@ -259,7 +280,7 @@ getPrimaryAction(packed32){
  * @returns others Action
  */
 getOthersAction(packed32){
-     return ( (packed32 >> 16) & 0x0F) 
+     return ( (packed32 >>> 16) & 0x0F) 
 }
 /**
  * 
@@ -267,7 +288,7 @@ getOthersAction(packed32){
  * @returns self boundry
  */
 getPrimaryBoundary(packed32){
-    return (packed32 & 0xF0)
+    return (packed32 & 0x70)
 }
 /**
  * 
@@ -275,7 +296,7 @@ getPrimaryBoundary(packed32){
  * @returns othersBoundary
  */
 getOthersBoundary(packed32){
-     return ( (packed32 >> 16) & 0xF0) 
+     return ( (packed32 >>> 16) & 0x70) 
 }
 /**
  * 
@@ -283,7 +304,7 @@ getOthersBoundary(packed32){
  * @returns others bytes 
  */
 getOthers(packed32){
-    return ((packed32 >> 16) & 0xFFFF)
+    return ((packed32 >>> 16) & 0xFFFF)
 }
 /**
  * its used for check effective others (others means others resources that not belong to this users)
