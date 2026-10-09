@@ -1,8 +1,3 @@
-# 📚 README for BasePersistence.js
-
-
-
-```markdown
 # BasePersistence - Universal Atomic Persistence Layer
 
 A powerful, framework-agnostic persistence layer that provides **atomic operations** with MongoDB Transactions,
