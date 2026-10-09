@@ -1,10 +1,12 @@
 import { EVENT_MTYPES, EVENT_TYPES } from "../../Monitor/constant/eventType.js";
 import { record } from "../../Monitor/monitoringSystem.js";
-import { SYSTEM_STATUS,TYPE_IDS , TYPE_ID_TAG,STRIDER_SIZES,RESOURCES_CHILD,SIZE_POWER} from "../constant/resourceType.js";
+import { RoleBaseBuckets } from "./buckets.js";
+import { SYSTEM_STATUS,TYPE_IDS , RESOURCE_NONE_INSTANCES, STRIDER_SIZES, RESOURCES_CHILD, SIZE_POWER} from "../constant/resourceType.js";
 
 
 /**
- * used for cached every instance of every resource int it own index 
+ * Used for caching every instance of every resource into its own index.
+ * Optimized for runtime creation and safe deletion in multi-tenant environments.
  */
 export class SystemResourcesIntstances {
 
@@ -12,126 +14,57 @@ export class SystemResourcesIntstances {
 
         this.resourcelist = {};
         this.roleList=Object.create(null);
-        this.roleMemberList=Object.create(null);
         this.roleList["counter"]=1;
         this.rolesCount=0;
+        this.totalResourcesCount=0;
+        this.totalResourcesDeleteCount=0;
         
-
-        
-
     }
-
-   
-
-     AddRole(RoleName) {
+/**
+ * 
+ * @param {String} RoleName : group role name 
+ * @returns {boolean} true for success
+ */
+    AddRole(RoleName) {
         //validate pid
        
 
-        if (this.roleList?.[RoleName] !== undefined ) return { code: SYSTEM_STATUS.ROLE_EXISTS , message: `Role With Sama Name is Existes ${RoleName}` };
+        if (this.roleList?.[RoleName] !== undefined ) return { code: SYSTEM_STATUS.ROLE_EXISTS , message: `ResourceInstanceError: Role With Sama Name is Existes ${RoleName}` };
 
-        //this.roleList[this.this.roleList.counter]=RoleName;
+       
        
         this.roleList[RoleName]=this.roleList.counter++;
         this.rolesCount++;
 
-       
-      
         const wildcard=STRIDER_SIZES.WILDCARD_INDEX;
 
-        if(wildcard < 32 && this.roleList.counter % wildcard > wildcard-10 ) // max wildcard  is 32
+        if(wildcard < 32 && this.roleList.counter % wildcard > wildcard-10 ) // max wildcard  is 32 
            SIZE_POWER.WILDCARD*=2
         return true;
     }
-    /**
-     * 
-     * @param {String} RoleName -name guest admind 
-     * @param {string} roleMemberName - role-1 role-2
-     * @param {RoleElementObject} roleElementObject 
-     * @returns 
-     */
-    AddRoleMember(RoleName, roleMemberName) {
-        const roleId = this.getRoleId(RoleName);
-        if (roleId === undefined) {
-            return { code:SYSTEM_STATUS.ROLE_NOT_FOUND, message: `Role does not exist: ${RoleName}` };
-        }
 
-        // Initialize the role's member container only if it doesn't exist yet
-        if (!this.roleMemberList[roleId]) {
-            this.roleMemberList[roleId] = {
-                groupRoleName: RoleName,
-                counter: 0,
-                memberToIndex: Object.create(null),
-                memberFromIndex: Object.create(null)
-            };
-        }
+ /**
+  * #### delete Group Role by name if Role is Active then its denied 
+  * @param {String } GroupRoleName -- name of group  
+  * @returns {boolean} true for sucsses ,fail return message code 
+  */   
+deleteRolebyName(GroupRoleName){
+    const isRoleActive=RoleBaseBuckets.isRoleActiveByName(GroupRoleName) 
+    if(isRoleActive) return {code:SYSTEM_STATUS.DELETE_ERROR,message: `ResourceInstanceError: Cant Delete Active Role ${GroupRoleName}`}
+    delete this.roleList[GroupRoleName];
+    this.rolesCount--;
+    return true;
+}
 
-        const roleData = this.roleMemberList[roleId];
 
-        // Check if member already exists within this role
-        if (roleData.memberToIndex[roleMemberName] !== undefined) {
-            return { code: SYSTEM_STATUS.ROLE_MEMBER_EXISTS , message: `Role member already exists: ${roleMemberName}` };
-        }
-
-        const memberId = roleData.counter++;
-
-        // Bidirectional mapping
-        /**
-         * {roleId:{
-         * memberFromIndex:{
-         *                   memberId:roleMemberName
-         * },
-         * memberToIndex:{
-         *                  memberName: memberId
-         * },
-         * }, end of roleId
-         * },end of 
-         * 
-         */
-        roleData.memberFromIndex[memberId] = roleMemberName;
-        roleData.memberToIndex[roleMemberName] = memberId;
-
-      
-
-        return true;
-    }
+    
 /**
- * 
- * @param {number} roleId -- GroupRole Id 
- * @param {number} roleMemberId -- role Member Id 
- * @returns {String} RoleMemberName return member name by specify RoleId and MemeberId
- */
-    getRoleMemberNameByIndexed(roleId, roleMemberId) {
-        if (!this.roleMemberList[roleId]) return { code: SYSTEM_STATUS.INVALID_ROLE_ID, message: `Invalid role ID ${roleId}` };
-        return this.roleMemberList[roleId].memberFromIndex[roleMemberId];
-    }
-    /**
-     * return roleMemberid by passing roleId and RoleMemberName
-     * @param {number} roleId 
-     * @param {string} roleMemberName 
-     * @returns {number} roleMemberId
-     */
-
-    getRoleMemberIndexByName(roleId, roleMemberName) {
-        if (!this.roleMemberList[roleId]) return { code: SYSTEM_STATUS.INVALID_ROLE_ID, message: `Invalid role ID ${roleId}` };
-        return this.roleMemberList[roleId].memberToIndex[roleMemberName];
-    }
-
-    /**
-     * 
-     * @param {number} groupRoleId 
-     * @returns {string} GroupRoleName : return Role Name by passing RoleId
-     */
-    getGoupNameById(groupRoleId) {
-        if (!this.roleMemberList[groupRoleId]) return { code: SYSTEM_STATUS.INVALID_ROLE_ID, message: `Invalid group role ID ${groupRoleId}` };
-        return this.roleMemberList[groupRoleId].groupRoleName;
-    }
-/**
- * 
+ * used for getten Rolegroup Id by name
  * @param {String} RoleName 
- * @returns {number} GroupRoleId
+ * @returns {number} GroupRoleId | message code 
  */
     getRoleId(RoleName){
-        if(this.roleList[RoleName] === undefined) return { code: SYSTEM_STATUS.ROLE_NOT_FOUND, message: `Role Name ${RoleName} not have any Id` }
+        if(this.roleList[RoleName] === undefined) return { code: SYSTEM_STATUS.ROLE_NOT_FOUND, message: `ResourceInstanceError: Role Name ${RoleName} not have any Id` }
         return this.roleList[RoleName];
     }
     /**
@@ -139,19 +72,19 @@ export class SystemResourcesIntstances {
      * 
      * @param {import("../constant/typesDef.js").ResourcesName} res_Name
      * @param {String} instanceName
-     * @returns
+     * @returns {Boolean} true for success | fail message code
      */
 
     AddResourceInstance(res_Name, instanceName) {
         //validate pid
 
-        if (!TYPE_IDS[res_Name]) return { code: SYSTEM_STATUS.INVALID_RESOURCE_PID, message: `Not Valid Resources PID ${res_Name}` };
+        if (!TYPE_IDS[res_Name]) return { code: SYSTEM_STATUS.INVALID_RESOURCE_PID, message: `ResourceInstanceError: Not Valid Resources PID ${res_Name}` };
 
         const res_pid = TYPE_IDS[res_Name];
 
 
-        if (!TYPE_ID_TAG[res_pid]) return { code: SYSTEM_STATUS.INSTANCE_NOT_ALLOWED, message: `None Instance for None Taged Resources ${res_pid},any none taged have instance 0` };
-        let counter = 1;
+       if (RESOURCE_NONE_INSTANCES[res_pid]) return { code: SYSTEM_STATUS.INSTANCE_NOT_ALLOWED, message: `ResourceInstanceError: This Resource ${res_pid} Not Allowed to Have instance, its only have instance zero` };
+        let counter = 0;
 
 
         if (!this.resourcelist?.[res_pid]) {
@@ -164,10 +97,11 @@ export class SystemResourcesIntstances {
             counter = this.resourcelist[res_pid].counter;
         }
 
-        if (this.resourcelist[res_pid].index[instanceName]) return { code: SYSTEM_STATUS.INSTANCE_EXIST, message: "existed instance resource Name" }
+        if (this.resourcelist[res_pid].index[instanceName]) return { code: SYSTEM_STATUS.INSTANCE_EXIST, message: `ResourceInstanceError:existed instance resource Name ${instanceName}` }
 
         this.resourcelist[res_pid].index[instanceName] = counter;
         this.resourcelist[res_pid].counter++;
+         this.totalResourcesCount++;
         // record metrics name with lable {pid:res_pid}
        record(EVENT_TYPES.RBAC_INSTANCE_ADDED,EVENT_MTYPES.METRIC_C, 1,res_pid)
 
@@ -179,38 +113,70 @@ export class SystemResourcesIntstances {
         return true;
 
     }
-    /**
-     *
-     * @param {import('../constant/typesDef.js').ResourcesName} res_Name
-     * @param {String} instanceName
-     * @returns {number} resource instane index value by instance name 
-     */
+ /**
+ * Gets the instance index for a given resource name and instance name.
+ * Optimized for O(1) hot-path lookups with minimal property access.
+ * 
+ * @param {import('../constant/typesDef.js').ResourcesName} res_Name
+ * @param {String} instanceName
+ * @returns {number | Object} The instance index, or an error object if not found.
+ */
+getResourceInstanceIndex(res_Name, instanceName) {
+  
+    const res_pid = TYPE_IDS[res_Name];
+    if (!res_pid) {
+        return { code: SYSTEM_STATUS.INVALID_RESOURCE_PID, message: `ResourceInstanceError: Invalid Resources PID for ${res_Name}` };
+    }
     
-    getResourceInstanceIndex(res_Name, instanceName) {
-        const res_pid = TYPE_IDS[res_Name];
+    if (instanceName === '*') return STRIDER_SIZES.WILDCARD_INDEX;
+    if (RESOURCE_NONE_INSTANCES[res_pid]) return 0;
 
-        if (!res_pid) return { code: SYSTEM_STATUS.INVALID_RESOURCE_PID, message: `Not Valid Resources PID for ${res_Name}` };
-        if (instanceName === '*') return STRIDER_SIZES.WILDCARD_INDEX;
-        if (res_pid === 101) return 0;
-
-        if (!this.resourcelist[res_pid] || this.resourcelist[res_pid].index[instanceName] === undefined) return { code: SYSTEM_STATUS.RESOURCE_NOT_FOUND, message: `no (list | existed instance) reource Name ${instanceName}` }
-        return Number(this.resourcelist[res_pid].index[instanceName]);
-
-        
-
+    const resourceData = this.resourcelist[res_pid];
+    if (!resourceData) {
+        return { code: SYSTEM_STATUS.RESOURCE_NOT_FOUND, message: `ResourceInstanceError: no exist index for resource Name ${instanceName}` };
     }
 
+    const index = resourceData.index[instanceName];
+    if (index === undefined) {
+        return { code: SYSTEM_STATUS.RESOURCE_NOT_FOUND, message: `ResourceInstanceError: no exist index for resource Name ${instanceName}` };
+    }
+
+
+    return index;
+}
+    /**
+     *  delete just parent type of resource instances 
+     * if this instances are linked to active role then not allowed for deletion 
+     * @param {import("../constant/typesDef.js").ResourcesName} res_Name 
+     * @param {String} instanceName 
+     * @returns {boolean} true for success | fail message code
+     */
+
      deletetResourceInstanceIndex(res_Name, instanceName) {
-        const res_pid = TYPE_IDS[res_Name];
+         const res_pid = TYPE_IDS[res_Name];
 
-        if (!res_pid) return { code: SYSTEM_STATUS.INVALID_RESOURCE_PID, message: `Not Valid Resources PID for ${res_Name}` };
-        if (instanceName === '*') return STRIDER_SIZES.WILDCARD_INDEX;
-        if (RESOURCES_CHILD[res_pid] === null) return 0;
+        if (!res_pid) return { code: SYSTEM_STATUS.INVALID_RESOURCE_PID, message: `ResourceInstanceError: Not Valid Resources PID for ${res_Name}` };
 
-        if (!this.resourcelist[res_pid] || this.resourcelist[res_pid].index[instanceName] === undefined) return { code: SYSTEM_STATUS.RESOURCE_NOT_FOUND, message: `no (list | existed instance) reource Name ${instanceName}` }
-        delete this.resourcelist[res_pid].index[instanceName];
+        const resIndex = this.getResourceInstanceIndex(res_Name, instanceName);
+        if (resIndex?.code !== undefined) {
+            return { success: false, code: resIndex.code, message: resIndex.message };
+        }
+
+         const isParentActive = RoleBaseBuckets.isParentReourceInstanceActive(res_pid, resIndex);
+         if(isParentActive) return { success: false, code: SYSTEM_STATUS.DELETE_ERROR , message: `ResourceInstanceError: Cant Delelte instance ${instanceName} of type ${res_Name} it linked to Active role` };
+    
+   
+    delete this.resourcelist[res_pid].index[res_Name];
+
+        this.totalResourcesDeleteCount++;
+        this.totalResourcesCount--;
+
+    if (Object.keys(this.resourcelist[res_pid].index).length === 0) {
+            delete this.resourcelist[res_pid];
+        }
+
         return true
-     }
+   }
     /**
  *
  * @param {ResourcesName} res_Name
@@ -219,9 +185,9 @@ export class SystemResourcesIntstances {
  */
     getResourceInstanceList(res_Name) {
 
-        if (!TYPE_IDS[res_Name]) return { code:SYSTEM_STATUS.INVALID_RESOURCE_PID, message: `Not Valid Resources PID ${res_Name}` };
+        if (!TYPE_IDS[res_Name]) return { code:SYSTEM_STATUS.INVALID_RESOURCE_PID, message: `ResourceInstanceError: Not Valid Resources PID ${res_Name}` };
         const res_pid = TYPE_IDS[res_Name];
-        if (!this.resourcelist[res_pid]) return { code: SYSTEM_STATUS.RESOURCE_NOT_FOUND, message: `no list for this Resource type ${res_Name}` }
+        if (!this.resourcelist[res_pid]) return { code: SYSTEM_STATUS.RESOURCE_NOT_FOUND, message: `ResourceInstanceError: no list for this Resource type ${res_Name}` }
         return this.resourcelist[res_pid].index;
 
     }
@@ -232,7 +198,6 @@ export class SystemResourcesIntstances {
 
         this.resourcelist=Object.create(null);
         this.roleList=Object.create(null);
-        this.roleMemberList=Object.create(null);
         this.roleList["counter"]=1;
         this.rolesCount=0;
     }
@@ -240,8 +205,8 @@ export class SystemResourcesIntstances {
     getStats() {
         return {
             rolesCount: this.rolesCount,
-            roleMembersCount: Object.keys(this.roleMemberList).length,
-            resourcesCount: Object.keys(this.resourcelist).length,
+            resourcesCount: this.totalResourcesCount,
+            resourcesDeleteCount: this.totalResourcesDeleteCount,
             wildcardPower: SIZE_POWER.WILDCARD
            
         };
