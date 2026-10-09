@@ -1,10 +1,12 @@
 
 import { resourceInstance } from "../buckets/systemReourcesInstances.js";
-import { RESOURCES_CHILD ,SYSTEM_STATUS,TYPE_IDS,TYPE_ID_TAG ,STRIDER_SIZES} from "../constant/resourceType.js";
+import { RESOURCES_CHILD ,SYSTEM_STATUS,TYPE_IDS,TYPE_ID_TAG ,STRIDER_SIZES,EFFECT_ACTION} from "../constant/resourceType.js";
+import { normalizeTTLToTimestamp } from "../utils/utils.js";
+
 
 
 /**
- * @import {ResourcesName, SchemaSlices, ResourcePid} from './../constant/typesDef.js'
+ * @import {ResourcesName, SchemaSlices, ResourcePid, RoleElementObject} from './../constant/typesDef.js'
  */
 export class ResourceRoleGroupManager {
     constructor(groupRoleName, groupRoles,update=false) {
@@ -132,88 +134,137 @@ export class ResourceRoleGroupManager {
 
     }
 
-/**
- * Validates a single role element against the system schema.
- * Caches PIDs locally to avoid repeated global Map/Object lookups.
- * 
- * @param {string} leafName 
- * @param {RoleElementObject} roleElement 
- * @returns {number|{code: number, message: string}} 0 if valid, or error object
- */
-validateRolElement(leafName, { parentResource, parentInstance, action, boundary,actionToOthers,BoundaryToOthers,ownerInstance, nested, nestedInstance }) {
-   
-    const parentPid = TYPE_IDS[parentResource];
-    const leafPid = TYPE_IDS[leafName];
-    const nestedPid = nested ? TYPE_IDS[nested] : null;
+   /**
+     * Validates a single role element against the system schema.
+     * Caches PIDs locally to avoid repeated global Map/Object lookups.
+     * 
+     * @param {string} leafName 
+     * @param {RoleElementObject} roleElement 
+     * @returns {number|{code: number, message: string}} 0 if valid, or error object
+     */
+    validateRolElement(leafName, { parentResource, parentInstance, action, actionToOthers,ownerInstance, nested, nestedInstance ,ttl=0}) {
 
-    //  Parent Resource Validation
-    if (parentPid === undefined) {
-        return { code: SYSTEM_STATUS.INVALID_RESOURCE_PID, message: `Not defined or tagged Parent Resource: ${parentResource}` };
-    }
-    if (!Array.isArray(parentInstance) || parentInstance.length === 0) {
-        return { code: SYSTEM_STATUS.RESOURCES_EMPTY_LIST, message: `Parent Resource ${parentResource} must have a non-empty Instances List` };
-    }
-    if (parentInstance.length > 1 && parentInstance.includes("*")) {
-        return { code: SYSTEM_STATUS.WILDCARD_WITHE_INSTANCE, message: `Leaf ${leafName} in Parent Resource ${parentResource} list does not allow other instances alongside wildcard '*'` };
-    }
+        const parentPid = TYPE_IDS[parentResource];
+        const leafPid = TYPE_IDS[leafName];
+        const nestedPid = nested ? TYPE_IDS[nested] : null;
 
-    //Leaf Resource Validation
-    if (leafPid === undefined) {
-        return { code: SYSTEM_STATUS.INVALID_RESOURCE_PID, message: `Undefined Leaf Resource: ${leafName}` };
-    }
-
-    // Check if leaf is illegal (cannot act as a parent/container)
-    const leafChildren = RESOURCES_CHILD[leafPid];
-    if (leafChildren && leafChildren.size > 0) {
-        return { code: SYSTEM_STATUS.INVALID_HIERARCHY, message: `Leaf Resource ${leafName} cannot have Leaf child resources` };
-    }
-
-    // Check if leaf is tagged and requires an owner instance list
-    const isLeafTagged = TYPE_ID_TAG[leafPid] ? true : false;
-    if (isLeafTagged) {
-        if (!Array.isArray(ownerInstance) || ownerInstance.length === 0) {
-            return { code: SYSTEM_STATUS.RESOURCES_EMPTY_LIST, message: `Tagged Leaf Resource ${leafName} must have a valid list of instances` };
+        //  Parent Resource Validation
+        if (parentPid === undefined) {
+            return { code: SYSTEM_STATUS.INVALID_RESOURCE_PID, message: `SchemaValidationError:Not defined or tagged Parent Name ${parentResource} Resource: ${parentResource}` };
         }
-    }
-
-    if (ownerInstance.length > 1 && ownerInstance.includes("*")) {
-       
-        return { code: SYSTEM_STATUS.WILDCARD_WITHE_INSTANCE, message: `Leaf ${leafName} List in Parent Resource ${parentResource} does not allow other instances alongside wildcard '*'` };
-    }
-
-    //  Hierarchy & Relationship Checks (Direct PID lookup)
-    const parentChildren = RESOURCES_CHILD[parentPid];
-
-    if (nested) {
-        if (nestedPid === undefined) {
-            return { code: SYSTEM_STATUS.INVALID_RESOURCE_PID, message: `Not defined or tagged Nested Resource: ${nested}` };
+        if (!Array.isArray(parentInstance) || parentInstance.length === 0) {
+            return { code: SYSTEM_STATUS.RESOURCES_EMPTY_LIST, message: `SchemaValidationError:Parent Resource ${parentResource} must have a non-empty Instances List` };
+        }
+        if (parentInstance.length > 1 && parentInstance.includes("*")) {
+            return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError:Leaf ${leafName} in Parent Resource ${parentResource} list does not allow other instances alongside wildcard '*'` };
         }
 
-        // Validate Parent -> Nested hierarchy
-        if (!parentChildren || !parentChildren.has(nestedPid)) {
-            return { code: SYSTEM_STATUS.INVALID_HIERARCHY, message: `Resource ${nested} is not a member of ${parentResource}` };
+        //Leaf Resource Validation
+        if (leafPid === undefined) {
+            return { code: SYSTEM_STATUS.INVALID_RESOURCE_PID, message: `SchemaValidationError: Undefined Leaf Resource: ${leafName}` };
         }
 
-        if (!Array.isArray(nestedInstance) || nestedInstance.length === 0) {
-            return { code: SYSTEM_STATUS.RESOURCES_EMPTY_LIST, message: `Nested Resource ${nested} must have a valid Instances List` };
+        // Check if leaf is illegal (cannot act as a parent/container) means its cant have child
+        const leafChildren = RESOURCES_CHILD[leafPid];
+        if (leafChildren && leafChildren.size > 0) {
+            return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError:Leaf Resource ${leafName} cannot have child resources` };
         }
-        if (nestedInstance.length > 1 && nestedInstance.includes("*")) {
-        return { code:SYSTEM_STATUS.WILDCARD_WITHE_INSTANCE, message: `nested Child ${nested} in Parent Resource ${parentResource} list does not allow other instances alongside wildcard '*'` };
+
+        // Check if leaf is tagged and requires an owner instance list
+        const isLeafTagged = TYPE_ID_TAG[leafPid] ? true : false;
+        if (isLeafTagged) {
+            if (!Array.isArray(ownerInstance) || ownerInstance.length === 0) {
+                return { code: SYSTEM_STATUS.RESOURCES_EMPTY_LIST, message: `SchemaValidationError:Tagged Leaf Resource ${leafName} must have a valid list of instances` };
+            }
+        }
+         
+        const hasOwnerWildcard = ownerInstance.some(o => (typeof o === 'object' && o !== null ? o.name : o) === '*');
+
+        if (ownerInstance.length > 1 && hasOwnerWildcard) {
+
+            return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: Leaf ${leafName} List in Parent Resource ${parentResource} does not allow other instances alongside wildcard '*'` };
+        }
+
+        
+         for (let i = 0; i < ownerInstance.length; i++) {
+            const ins = ownerInstance[i];
+            if (typeof ins === 'object' && ins !== null) {
+                if (!ins.name) {
+                    return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: ownerInstance object must have 'name' property` };
+                }
+                if (ins.EffectedAction && EFFECT_ACTION[ins.EffectedAction] === undefined) {
+                    return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: Invalid EffectedAction '${ins.EffectedAction}' for instance '${ins.name}'` };
+                }
+
+                  if (ins.EffectedActionToOthers && EFFECT_ACTION[ins.EffectedActionToOthers] === undefined) {
+                    return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: Invalid EffectedAction '${ins.EffectedAction}' for instance '${ins.name}'` };
+                }
+                if(ins.ttl !== 0 ){
+                    const nTtl=normalizeTTLToTimestamp(ins.ttl)
+                    if(nTtl<0)  return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: Invalid ttl '${ins.ttl}' for instance '${ins.name}'` };
+                    ins.ttl=nTtl;
+                }
+            }
+
+            
+        }
+
+        //checking action now is EffectedActionNotation
+        if(action && action.length === 0){
+            return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: Empty Action  Not Allowed`}
+
+        }
+        if(EFFECT_ACTION[action] === undefined){
+            return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: not Valid Effected Action Notation `}
+
+        }
+
+        if(actionToOthers && actionToOthers.length === 0){
+            return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: Empty ActionToOthers Not Allowed`}
+
+        }
+        if(EFFECT_ACTION[actionToOthers] === undefined){
+            return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: not Valid Effected Action To Others Notation `}
+
+        }
+
+        //  Hierarchy & Relationship Checks (Direct PID lookup)
+        const parentChildren = RESOURCES_CHILD[parentPid];
+
+        if (nested) {
+            if (nestedPid === undefined) {
+                return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: Not defined or tagged Nested Resource: ${nested}` };
+            }
+
+            // Validate Parent -> Nested hierarchy
+            if (!parentChildren || !parentChildren.has(nestedPid)) {
+                return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: Resource ${nested} is not a member of ${parentResource}` };
+            }
+
+            if (!Array.isArray(nestedInstance) || nestedInstance.length === 0) {
+                return { code: SYSTEM_STATUS.RESOURCES_EMPTY_LIST, message: `SchemaValidationError: Nested Resource ${nested} must have a valid Instances List` };
+            }
+            if (nestedInstance.length > 1 && nestedInstance.includes("*")) {
+                return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: nested Child ${nested} in Parent Resource ${parentResource} list does not allow other instances alongside wildcard '*'` };
+            }
+
+            // Validate Nested -> Leaf hierarchy
+            const nestedChildren = RESOURCES_CHILD[nestedPid];
+            if (!nestedChildren || !nestedChildren.has(leafPid)) {
+                return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: Leaf ${leafName} is not a child of Nested Resource ${nested}` };
+            }
+        } else {
+            // Validate Parent -> Leaf direct hierarchy
+            if (!parentChildren || !parentChildren.has(leafPid)) {
+                return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: Resource ${leafName} is not a member of ${parentResource}` };
+            }
+        }
+        if(ttl !==0){
+            const nTtl=normalizeTTLToTimestamp(ttl);
+            if(nTtl<0) return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: Invalid ttl '${ttl}' for Leaf '${leafName}'` };
+        }
+
+        return 0; // Validation Passed
     }
-
-        // Validate Nested -> Leaf hierarchy
-        const nestedChildren = RESOURCES_CHILD[nestedPid];
-        if (!nestedChildren || !nestedChildren.has(leafPid)) {
-            return { code: SYSTEM_STATUS.INVALID_HIERARCHY, message: `Leaf ${leafName} is not a child of Nested Resource ${nested}` };
-        }
-    } else {
-        // Validate Parent -> Leaf direct hierarchy
-        if (!parentChildren || !parentChildren.has(leafPid)) {
-            return { code: SYSTEM_STATUS.INVALID_HIERARCHY, message: `Resource ${leafName} is not a member of ${parentResource}` };
-        }
-    }
-
-    return 0; // Validation Passed
-}
 
 }
