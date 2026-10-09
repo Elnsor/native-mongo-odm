@@ -54,8 +54,13 @@ export class SystemResourcesIntstances {
 deleteRolebyName(GroupRoleName){
     const isRoleActive=RoleBaseBuckets.isRoleActiveByName(GroupRoleName) 
     if(isRoleActive) return {code:SYSTEM_STATUS.DELETE_ERROR,message: `ResourceInstanceError: Cant Delete Active Role ${GroupRoleName}`}
-    delete this.roleList[GroupRoleName];
-    this.rolesCount--;
+    const roleId = this.roleList[GroupRoleName];
+        if (roleId !== undefined) {
+           
+            delete this.roleList[GroupRoleName];
+            delete this.reverseRoleList[roleId];
+            this.rolesCount--;
+        }
     return true;
 }
 
