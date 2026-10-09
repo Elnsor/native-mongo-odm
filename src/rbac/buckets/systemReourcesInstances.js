@@ -12,9 +12,10 @@ export class SystemResourcesIntstances {
 
     constructor() {
 
-        this.resourcelist = {};
+        this.resourcelist = Object.create(null);
         this.roleList=Object.create(null);
         this.roleList["counter"]=1;
+        this.reverseRoleList=Object.create(null);
         this.rolesCount=0;
         this.totalResourcesCount=0;
         this.totalResourcesDeleteCount=0;
@@ -33,7 +34,9 @@ export class SystemResourcesIntstances {
 
        
        
-        this.roleList[RoleName]=this.roleList.counter++;
+        this.roleList[RoleName]=this.roleList.counter;
+        this.reverseRoleList[counter]=RoleName;
+        this.roleList.counter++;
         this.rolesCount++;
 
         const wildcard=STRIDER_SIZES.WILDCARD_INDEX;
@@ -51,8 +54,13 @@ export class SystemResourcesIntstances {
 deleteRolebyName(GroupRoleName){
     const isRoleActive=RoleBaseBuckets.isRoleActiveByName(GroupRoleName) 
     if(isRoleActive) return {code:SYSTEM_STATUS.DELETE_ERROR,message: `ResourceInstanceError: Cant Delete Active Role ${GroupRoleName}`}
-    delete this.roleList[GroupRoleName];
-    this.rolesCount--;
+    const roleId = this.roleList[GroupRoleName];
+        if (roleId !== undefined) {
+           
+            delete this.roleList[GroupRoleName];
+            delete this.reverseRoleList[roleId];
+            this.rolesCount--;
+        }
     return true;
 }
 
@@ -67,6 +75,17 @@ deleteRolebyName(GroupRoleName){
         if(this.roleList[RoleName] === undefined) return { code: SYSTEM_STATUS.ROLE_NOT_FOUND, message: `ResourceInstanceError: Role Name ${RoleName} not have any Id` }
         return this.roleList[RoleName];
     }
+
+    /**
+ * 
+ * @param {number} roleId
+ * @returns {String} GroupRoleId
+ */
+    getRoleNameById(roleId){
+        if(this.reverseRoleList[roleId] === undefined) return { code: SYSTEM_STATUS.ROLE_NOT_FOUND, message: `ResourceInstanceError: Role Id ${roleId} not Exist Id` }
+        return this.roleList[roleId];
+    }
+    
     /**
      * each resource type have a resource list nameing by its resourceName and any instance from this resource git indexed 
      * 
