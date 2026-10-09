@@ -12,7 +12,7 @@ export class SystemResourcesIntstances {
 
     constructor() {
 
-        this.resourcelist = {};
+        this.resourcelist = Object.create(null);
         this.roleList=Object.create(null);
         this.roleList["counter"]=1;
         this.reverseRoleList=Object.create(null);
