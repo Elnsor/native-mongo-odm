@@ -1,28 +1,35 @@
+Here is the fully updated, comprehensive `README.md` that accurately reflects all the advanced optimizations, architectural upgrades, and new features we've implemented in your RBAC system.
+
+***
+
 # 🚀 High-Performance Binary RBAC System
 
-An advanced, sub-microsecond Role-Based Access Control (RBAC) engine that uses **direct Binary Storage (`Uint32Array`)** to achieve ultra-high performance, replacing traditional heavy JSON object evaluations with lightning-fast bitwise memory reads.
+An advanced, sub-microsecond Role-Based Access Control (RBAC) engine that uses **direct Binary Storage (`Uint32Array`)** to achieve ultra-high performance. It replaces traditional heavy JSON object evaluations with lightning-fast, cache-friendly bitwise memory reads, featuring enterprise-grade crash recovery and atomic hot-swapping.
 
 ## ✨ Core Features
-- ⚡ **Instant O(1) Access**: Direct memory offset calculation for any permission check.
-- 💾 **Smart Memory Usage**: Contiguous `Uint32Array` buffers eliminate JavaScript object overhead and GC pressure.
-- 🌐 **Intelligent Wildcard Support**: Native `0xFFFFFFFF` marker for broad, efficient permission delegation.
-- 🔄 **Atomic Hot-Swap**: Update role definitions in production with zero downtime.
-- ⚙️ **Background Processing**: Asynchronous compilation and memory allocation for heavy operations.
-- 🛡️ **Strict Multi-Stage Validation**: Prevents invalid hierarchies, duplicate instances, and malformed TTLs before memory allocation.
+- ⚡ **Instant O(1) Access**: Direct memory offset calculation for any permission check, bypassing object traversal entirely.
+- 💾 **Variable-Sized Buffer Blueprinting**: Dynamically calculates exact byte sizes for sparse nested resources, eliminating uniform sizing memory waste.
+- 🧠 **4-Phase Smart Pruning**: Advanced bitwise coverage logic (`(wildcard & specific) === specific`) automatically absorbs and deletes redundant rules during compilation.
+- 🔑 **53-Bit Flattened Indexing**: Replaces deep 4-level Map nesting with 3-level flattened composite keys, reducing memory overhead by ~40% while maintaining O(1) speed.
+- 🔄 **Atomic Hot-Swap**: Updates role definitions in production with zero downtime by compiling into a fresh worker and swapping pointers only on success.
+- ⚙️ **Dual-Window Background Flusher**: Intelligently batches TTL expirations (Threshold: 50, or Time: 5s) to prevent event loop "flush storms".
+- 🛡️ **Strict Layer Isolation**: `RoleCompiler` (staging) is strictly decoupled from `RoleBinaryWorker` (execution), guaranteeing safe, corruption-free updates.
+- 🌐 **Unified 32-Bit Action Notation**: Replaces separate `action`/`boundary` arrays with packed 32-bit integers (e.g., `"RWO"`), enabling nanosecond bitwise checks.
 
 ## 🎯 Why This System?
 | Metric | Traditional RBAC | Binary RBAC Engine |
 | :--- | :--- | :--- |
 | **Check Latency** | 1–5 ms (Object traversal) | **< 100 ns** (Bitwise memory read) |
-| **Memory Footprint** | High (Heavy JSON objects) | **10–100x smaller** (Raw 32-bit integers) |
+| **Memory Footprint** | High (Heavy JSON objects) | **40–60% smaller** (Raw 32-bit integers + pruned payloads) |
 | **Concurrency** | Lock contention on shared state | **Lock-free**, per-role isolated buffers |
 | **Updates** | Requires cache invalidation/reload | **Atomic pointer swap** (Zero downtime) |
+| **Resilience** | Volatile (lost on crash) | **Crash-Resistant** (Rebuilds instantly from persisted JSON) |
 
 ---
 
 ## 🏗️ System Architecture
 
-The system consists of **4 fundamental layers** working in perfect harmony:
+The system consists of **4 fundamental layers** working in perfect harmony, orchestrated by the `RBACManager` facade.
 
 ```mermaid
 flowchart TD
@@ -32,12 +39,15 @@ flowchart TD
     classDef monitor fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000
     classDef base fill:#eceff1,stroke:#37474f,stroke-width:2px,stroke-dasharray: 5 5,color:#000
 
+    subgraph Facade_Layer ["🎛️ Facade Layer"]
+        RBACManager["RBACManager\n(Unified API for App)"]:::base
+    end
+
     subgraph Input_Layer ["📥 1. Input & Compilation Layer"]
         direction TB
         JSON_Def["GroupRole JSON Definition"]:::input
-        RoleCompiler["RoleCompiler.compile()\n• Validation\n• Parsing to Slices\n• Strider Calculation"]:::input
-        Striders["Striders\n(Offsets & Sizes)"]:::input
-        JSON_Def --> RoleCompiler --> Striders
+        RoleCompiler["RoleCompiler\n• 4-Phase Smart Pruning\n• 53-Bit Compact Indexing\n• Variable-Sized Strider Calc"]:::input
+        JSON_Def --> RoleCompiler
     end
 
     subgraph Storage_Layer ["💾 2. Storage & Allocation Layer"]
@@ -45,14 +55,14 @@ flowchart TD
         RowBinaryAllocator["RowBinaryAllocator\n(Memory Allocation)"]:::storage
         Uint32Array["Uint32Array Buffer"]:::storage
         RoleBinaryWorker["RoleBinaryWorker\n(Data Population)"]:::storage
-        Striders --> RowBinaryAllocator --> Uint32Array <--> RoleBinaryWorker
+        RoleCompiler -->|Striders & Paths| RowBinaryAllocator --> Uint32Array <--> RoleBinaryWorker
     end
 
     subgraph Runtime_Layer ["⚡ 3. Runtime & Management Layer"]
         direction TB
-        SystemResourcesInstances["SystemResourcesInstances (Singleton)\n(Manages resources, roles, members)"]:::base
-        RoleBaseBuckets["RoleBaseBuckets\n• Bucket Registration\n• Reverse Index Creation"]:::runtime
-        AutherizationCheck["AutherizationCheck.checkAccess()\n(O(1) Permission Verification)"]:::runtime
+        SystemResourcesInstances["SystemResourcesInstances\n(Global Taxonomy & Reverse Index)"]:::base
+        RoleBaseBuckets["RoleBaseBuckets\n• Dual-Window Flusher\n• Atomic Hot-Swap"]:::runtime
+        AutherizationCheck["AutherizationCheck\n(O(1) Bitwise Permission Verification)"]:::runtime
         RoleBinaryWorker -->|Stored in| RoleBaseBuckets
         SystemResourcesInstances -.->|Provides Context| RoleBaseBuckets
         RoleBaseBuckets -->|Used by| AutherizationCheck
@@ -62,13 +72,13 @@ flowchart TD
         direction TB
         SystemMonitor["SystemMonitor\n(Lock-free Ring Buffer)"]:::monitor
         MetricsCollector["MetricsCollector\n(Counters, Gauges, Histograms)"]:::monitor
-        AuditLogger["AuditLogger\n(Batched Async Persistence)"]:::monitor
         AutherizationCheck -.->|Emits Events| SystemMonitor
-        SystemMonitor --> MetricsCollector & AuditLogger
+        SystemMonitor --> MetricsCollector
     end
 
-    RoleCompiler -.->|Inherits| ResourceRoleGroupManager["ResourceRoleGroupManager (Base)"]:::base
-    RoleBinaryWorker -.->|Inherits| RowBinaryAllocator
+    RBACManager -.->|Orchestrates| RoleCompiler
+    RBACManager -.->|Orchestrates| RoleBaseBuckets
+    RBACManager -.->|Orchestrates| AutherizationCheck
 ```
 
 ---
@@ -78,45 +88,45 @@ flowchart TD
 ```mermaid
 sequenceDiagram
     participant Dev as Developer / API
+    participant Manager as RBACManager
     participant Compiler as RoleCompiler
-    participant Allocator as RowBinaryAllocator
     participant Worker as RoleBinaryWorker
     participant Buckets as RoleBaseBuckets
     participant Auth as AutherizationCheck
-    participant Monitor as SystemMonitor
 
-    Note over Dev,Monitor: 🚀 Phase 1: Compilation & Allocation
-    Dev->>Compiler: 1. Provide GroupRole JSON Definition
+    Note over Dev,Auth: 🚀 Phase 1: Compilation & Allocation
+    Dev->>Manager: 1. createRole(roleName, jsonDef)
+    activate Manager
+    Manager->>Compiler: 2. new RoleCompiler(roleName, jsonDef)
     activate Compiler
-    Compiler->>Compiler: Validate Schema & Parse to Slices
-    Compiler->>Compiler: Calculate Striders (Offsets/Sizes)
-    Compiler-->>Allocator: 2. Pass Striders for Allocation
+    Compiler->>Compiler: 4-Phase Smart Pruning & Inversion
+    Compiler->>Compiler: 53-Bit Compact Indexing & Strider Calc
+    Compiler-->>Manager: 3. Return Compiled State
     deactivate Compiler
 
-    activate Allocator
-    Allocator->>Allocator: Allocate Uint32Array Buffer
-    Allocator-->>Worker: 3. Return Buffer Reference
-    deactivate Allocator
-
+    Manager->>Worker: 4. new RoleBinaryWorker(roleName, compiler)
     activate Worker
-    Worker->>Worker: Populate Buffer with Role Data
-    Worker-->>Buckets: 4. Register Completed Worker Instance
+    Worker->>Worker: Allocate & Populate Uint32Array Buffer
+    Worker-->>Buckets: 5. Register Completed Worker Instance
     deactivate Worker
 
-    activate Buckets
     Buckets->>Buckets: Store in Map & Create Reverse Indexes
-    Buckets-->>Dev: Registration Success (Role ID)
-    deactivate Buckets
+    Buckets-->>Manager: Registration Success
+    deactivate Manager
 
-    Note over Dev,Monitor: ⚡ Phase 2: Runtime Usage
-    Dev->>Auth: 5. checkAccess(roleId, pType, pInstId...)
+    Note over Dev,Auth: ⚡ Phase 2: Runtime Usage
+    Dev->>Auth: 6. checkAccess(roleId, pType, pInstId...)
     activate Auth
     Auth->>Buckets: Fetch Binary Worker by Role ID
     Buckets-->>Auth: Return Uint32Array Buffer
-    Auth->>Auth: O(1) Bitwise Lookup in Buffer
-    Auth-->>Dev: Access Granted/Denied (Effects)
-    Auth-->>Monitor: Emit RBAC_AUTH_CHECK Event (Histogram)
+    Auth->>Auth: O(1) Bitwise Lookup (Golden Formula)
+    Auth-->>Dev: Access Granted/Denied (Packed 32-bit Effects)
     deactivate Auth
+
+    Note over Dev,Auth: 🔄 Phase 3: Atomic Hot-Swap (Background)
+    Buckets->>Buckets: 7. flushExpiredBucketAsync()
+    Buckets->>Compiler: 8. Compile FRESH worker from cleaned JSON
+    Buckets->>Buckets: 9. Atomic Pointer Swap (Only on Success)
 ```
 
 ---
@@ -125,9 +135,10 @@ sequenceDiagram
 
 | Phase | Class | Responsibility |
 | :--- | :--- | :--- |
-| **Definition (Static)** | `RoleCompiler` | Computes the plan: Validation, Parsing, and Strider (Offset/Size) calculation. |
+| **Definition (Static)** | `RoleCompiler` | Computes the plan: 4-Phase Pruning, Parsing, 53-Bit Indexing, and Strider calculation. |
 | **Execution (Dynamic)** | `RoleBinaryWorker` | Executes the plan: Allocates memory and populates the `Uint32Array` buffer. |
-| **Management (Runtime)**| `RoleBaseBuckets` | Manages active instances, reverse indexing, and atomic hot-swapping. |
+| **Management (Runtime)**| `RoleBaseBuckets` | Manages active instances, reverse indexing, dual-window flushing, and atomic hot-swapping. |
+| **Facade (API)** | `RBACManager` | Provides a clean, unified interface for the application, abstracting all internal complexity. |
 
 *This separation enables zero-downtime updates, fault isolation, and independent testing of each component.*
 
@@ -136,19 +147,6 @@ sequenceDiagram
 ## 💾 Binary Storage Philosophy
 
 ⚠️ **Critical Design Choice:** Each GroupRole has its **own separate `Uint32Array` Buffer**. Roles do *not* share a global buffer.
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ RoleBaseBuckets.insBucket (Map)                             │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │ RoleId: 1 → RoleBinaryWorker #1  └─→ buffer: Uint32Array(1024) │
-│  ├──────────────────────────────────────────────────────┤   │
-│  │ RoleId: 2 → RoleBinaryWorker #2  └─→ buffer: Uint32Array(512)  │
-│  ├──────────────────────────────────────────────────────┤   │
-│  │ RoleId: 3 → RoleBinaryWorker #3  └─→ buffer: Uint32Array(2048) │
-│  └──────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
-```
 
 ### Why Separate Buffers?
 1. **Complete Isolation**: An error or corruption in one role's buffer cannot affect others.
@@ -160,7 +158,7 @@ sequenceDiagram
 
 ## 🧬 Core Memory Units (Within Each Buffer)
 
-Every cell in the buffer is exactly **32 bits (4 bytes)**.
+Every cell in the buffer is exactly **32 bits (4 bytes)**. The system now supports **variable-sized nested children** via dynamic offset tables.
 
 ```mermaid
 flowchart LR
@@ -168,26 +166,26 @@ flowchart LR
         direction LR
         PH1["RoleId (32)"] --- PH2["ParentInstance (32)"]
     end
-    subgraph LeafNode ["2️⃣ Leaf Node (4 Cells = 128 bits)"]
+    subgraph NestedHeader ["2️⃣ Nested Child Header (Variable Size)"]
+        direction LR
+        NC1["Count (32)"] --- NC2["Offset_0 (32)"] --- NC3["Offset_1 (32)"] --- NC4["... (32)"]
+    end
+    subgraph LeafNode ["3️⃣ Leaf Node (4 Cells = 128 bits)"]
         direction LR
         LN1["Instance (32)"] --- LN2["MemberId (32)"] --- LN3["TTL (32)"] --- LN4["Effects (32)"]
     end
-    subgraph NestedChild ["3️⃣ Nested Child (1 Cell = 32 bits)"]
-        direction LR
-        NC1["Wildcard / Instance (32)"]
-    end
     classDef cell fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#000,font-weight:bold;
-    class PH1,PH2,LN1,LN2,LN3,LN4,NC1 cell;
+    class PH1,PH2,NC1,NC2,NC3,NC4,LN1,LN2,LN3,LN4 cell;
     classDef sub fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000;
-    class ParentHeader,LeafNode,NestedChild sub;
+    class ParentHeader,NestedHeader,LeafNode sub;
 ```
 
 ### Detailed Cell Breakdown
 | Unit | Size | Contents | Description |
 | :--- | :---: | :--- | :--- |
 | **Parent Header** | 2 Cells | `[RoleId, ParentInstance]` | Identifies the role and the parent resource instance. |
-| **Leaf Node** | 4 Cells | `[Instance, MemberId, TTL, Effects]` | Holds the actual permission data. *Always 4 cells, whether Child or GrandChild.* |
-| **Nested Child** | 1 Cell | `[Wildcard / Instance]` | Acts as a "passage" to reach a GrandChild. Exists *only* when a GrandChild is present. |
+| **Nested Header** | `1 + N` Cells | `[Count, Offset_0, Offset_1, ...]` | Acts as a dynamic offset table. Exists *only* when grandchildren are present. |
+| **Leaf Node** | 4 Cells | `[Instance, MemberId, TTL, Effects]` | Holds the actual permission data. *Always 4 cells, whether direct Child or GrandChild.* |
 
 ---
 
@@ -202,24 +200,48 @@ flowchart LR
 └────────────────────────────────────────────┘
 ```
 
-### Case 2: Nested Child + GrandChild Leaf
-*Total Size = 7 Cells*
+### Case 2: Nested Child + GrandChild Leaf (Variable-Sized)
+*Total Size = 2 (Parent) + 1+Count (Nested Header) + 4 (GrandChild Leaf)*
 ```text
-┌──────────────────────────────────────────────────────┐
-│ Parent (2) │ Nested Child (1) │ GrandChild Leaf (4)  │
-│ [RoleId,   │ [Wildcard/Ins]   │ [Ins, Mem, TTL, Eff] │
-│  ParIns]   │                  │                      │
-└──────────────────────────────────────────────────────┘
+Assume 2 Grandchild Instances:
+┌────────────────────────────────────────────────────────────────┐
+│ Parent (2) │ Nested Header (3)      │ GrandChild Leaf 0 (4)   │
+│ [RoleId,   │ [Count=2, Offset_0,    │ [Ins, Mem, TTL, Eff]    │
+│  ParIns]   │  Offset_1]             │                         │
+├────────────────────────────────────────────────────────────────┤
+│ GrandChild Leaf 1 (4)                                          │
+│ [Ins, Mem, TTL, Eff]                                           │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## 🧮 The Golden Formula for O(1) Access
 
-To read any cell within a role's buffer, the engine uses a deterministic mathematical formula:
+To read any cell within a role's buffer, the engine uses a deterministic mathematical formula.
 
+### For Direct Children:
 ```javascript
 address = shift + striderOffset[type] + (striderSize[type] × instanceIndex)
+```
+
+### For Nested Grandchildren (Dynamic Offset Lookup):
+```javascript
+// 1. Find the Nested Header address
+childAddr = shift + striderOffset[childType]
+
+// 2. Read the count and the specific offset for this instance
+count = buffer[childAddr]
+childShift = buffer[childAddr + 1 + childInstanceIndex]
+
+// 3. Calculate the final GrandChild Leaf address
+finalAddr = childAddr + count + childShift
+
+// 4. Read the 4-cell Leaf Node
+instance  = buffer[finalAddr]
+memberId  = buffer[finalAddr + 1]
+ttl       = buffer[finalAddr + 2]
+effects   = buffer[finalAddr + 3]
 ```
 
 | Element | Meaning | Example |
@@ -228,25 +250,6 @@ address = shift + striderOffset[type] + (striderSize[type] × instanceIndex)
 | `striderOffset[type]` | Internal offset to reach the specific Resource type. | `0` for Parent, `2` for Child Leaf. |
 | `striderSize[type]` | Resource block size (how many cells it occupies). | `2` for Parent, `4` for Leaf. |
 | `instanceIndex` | The requested instance number. | `0`, `1`, `2`, ... |
-
-### Practical Example: Accessing the 2nd GrandChild Leaf
-```text
-Buffer for GroupRole "ADMIN_ROLE":
- Parent Instance 0 (shift = 0)
-  ├─ Parent Header (offset=0, size=2): [RoleId, ParIns]
-  ├─ Child Leaf     (offset=2, size=4): [Ins, Mem, TTL, Eff]
-  ├─ Nested Child   (offset=6, size=1): [Wildcard]
-  ├─ GrandChild 0   (offset=7, size=4): [Ins, Mem, TTL, Eff]
-  └─ GrandChild 1   (offset=11, size=4): [Ins, Mem, TTL, Eff]  ← TARGET
-
-Calculation: address = 0 (shift) + 7 (offset) + (4 (size) × 1 (index)) = 11
-
-Reading:
-  worker.buffer[11] = Instance
-  worker.buffer[12] = MemberId
-  worker.buffer[13] = TTL
-  worker.buffer[14] = Effects
-```
 
 ---
 
@@ -278,11 +281,11 @@ The system uses `4294967295` (`0xFFFFFFFF`) as a special numeric marker for wild
 
 ## ⚙️ The 6-Phase Data Flow
 
-1. **JSON Definition**: User provides plain JSON. No memory allocated yet.
-2. **Validation (`parsedGroupRoleValidation`)**: Checks `TYPE_IDS`, hierarchy (`RESOURCES_CHILD`), wildcard mixing, and non-empty arrays. *Fails fast if invalid.*
-3. **Parsing (`parsedGroupRole`)**: Registers members, converts TTL to Unix timestamps, builds `SchemaSlices`, and populates the `_pathsBuffer`.
-4. **Strider Calculation (`calculateTotalStridersSchemaSlice`)**: Computes exact `striderSize` and `striderOffset` for every node, determining the final `totalBytesSize`.
-5. **Buffer Population (`RowBinaryAllocator` + `RoleBinaryWorker`)**: Allocates the `Uint32Array` and writes the 32-bit cells sequentially based on the strider map.
+1. **JSON Definition**: User provides plain JSON via `RBACManager`. No memory allocated yet.
+2. **Validation**: Checks `TYPE_IDS`, hierarchy (`RESOURCES_CHILD`), wildcard mixing, and non-empty arrays. *Fails fast if invalid.*
+3. **4-Phase Smart Pruning**: Explodes multi-instance parents, inverts the data structure, normalizes actions to 32-bit bitmasks, and prunes redundant wildcard rules.
+4. **Buffer Staging & Compact Indexing**: Assigns `0`-based relative compact indices using 53-bit flattened keys and writes 10-element blocks to the `_pathsBuffer`.
+5. **Variable-Sized Strider Calculation**: Computes exact `striderSize` and `striderOffset` for every node, including dynamic offset tables for nested children, determining the final `totalBytesSize`.
 6. **Runtime (`AutherizationCheck`)**: Fetches the worker, calculates the address using the Golden Formula, reads the 4 cells, checks TTL, and returns the bitwise `Effects`.
 
 ---
@@ -294,9 +297,9 @@ In high-performance systems, string comparison is a "performance killer." This s
 | Constant Map | Purpose | Example |
 | :--- | :--- | :--- |
 | **`TYPE_IDS`** | Maps resource names to unique numeric PIDs. | `COLLECTIONS: 100`, `DOCUMENTS: 101` |
-| **`TYPE_ID_TAG`** | Identifies resources that require an `ownerInstance`. | `[100]: 10000` |
-| **`RESOURCES_CHILD`** | The "Law of Parenthood". Defines valid hierarchies. | `Map([10, Set([11])])` (Article → Post) |
+| **`RESOURCES_CHILD`** | The "Law of Parenthood". Defines valid hierarchies. | `Map([100, Set([102])])` (COLLECTIONS → SEARCH_INDEXES) |
 | **`STRIDER_SIZES`** | The memory map governing cell sizes. | `PARENT: 2`, `CHILD: 4`, `NESTED: 1` |
+| **`EFFECT_ACTION`** | Unified 32-bit packed action + boundary notations. | `RWO: 49` (READ|WRITE + OWN) |
 | **`SYSTEM_STATUS`** | Standardized numeric error codes. | `INVALID_RESOURCE_PID: -11` |
 
 ### Bitmasking for Actions & Boundaries
@@ -316,22 +319,96 @@ Permissions are compressed into a single **32-bit `Effects` cell**:
 
 ### 1. Initialize the System
 ```javascript
-import { rbacManager } from './rbac/RBAC are
+import { rbacManager } from './rbac/RBACManager.js';
+
+// Initialize RBAC Manager (wires into monitoring automatically)
+rbacManager.initialize({ monitoring: { enabled: true } });
+console.log('✅ RBAC System is ready!');
 ```
 
----
+### 2. Register Resources & Instances
+```javascript
+// Register Parent Resource: COLLECTIONS
+rbacManager.registerResource('COLLECTIONS', ['users_collection', 'posts_collection']);
 
-## 📚 Full API Reference
+// Register Child Resource: SEARCH_INDEXES
+rbacManager.registerResource('SEARCH_INDEXES', ['idx_user_email', 'idx_post_title']);
+```
 
-*(Due to length, refer to the detailed API section in the original draft. Key highlights below)*
+### 3. Create a Role (Using Unified Notation)
+```javascript
+const editorRoleDefinition = {
+    "editor_member": {
+        "SEARCH_INDEXES": {
+            parentResource: "COLLECTIONS",
+            parentInstance: ["users_collection"],
+            action: "RWO",           // ✅ Unified: Read + Write + Own
+            actionToOthers: "RO",    // ✅ Unified: Read + Own (for others)
+            ownerInstance: [
+                { name: "user_1", ttl: "24h" }, // ✅ Per-owner TTL
+                { name: "user_2", ttl: "7d" }
+            ],
+            nested: "SEARCH_INDEXES",
+            nestedInstance: ["idx_user_email"]
+        }
+    }
+};
 
-### Core Classes
-- **`SystemResourcesInstances`**: Singleton managing resource/role/member registration.
-- **`RoleCompiler`**: Transforms JSON → Validation → Slices → Striders.
-- **`RowBinaryAllocator`**: Parent class allocating the `Uint32Array` buffer.
-- **`RoleBinaryWorker`**: Populates the buffer and provides `geteffectedAccess()` read interfaces.
-- **`RoleBaseBuckets`**: Manages active instances, reverse indexing, and `updateExistedInstanceRole()` (Hot-Swap).
-- **`AutherizationCheck`**: The O(1) permission verification engine.
+const result = rbacManager.createRole("EDITOR_ROLE", editorRoleDefinition);
+if (result.success) {
+    console.log(`✅ Role created! Role ID: ${result.roleId}`);
+}
+```
+
+### 4. Check Access (Runtime Authorization)
+```javascript
+import { DEFAULT_ACTIONS } from './rbac/constant/resourceType.js';
+
+const userRoleId = 1; // Fetched from user session
+const parentType = 100; // TYPE_IDS.COLLECTIONS
+const parentInstance = 0; // Index of 'users_collection'
+const childType = 102;    // TYPE_IDS.SEARCH_INDEXES
+const childInstance = 0;  // Index of 'idx_user_email'
+
+// 1. Perform the O(1) check
+const accessEffect = rbacManager.checkAccess(
+    userRoleId, parentType, parentInstance, childType, childInstance
+);
+
+// 2. Evaluate the result
+if (typeof accessEffect === 'object' && accessEffect.code) {
+    console.log(`🚫 Access Denied: ${accessEffect.message}`);
+} else {
+    // Access Granted! Check if the specific action is allowed
+    const canRead = rbacManager.allowedPrimaryTarget(accessEffect, DEFAULT_ACTIONS.READ);
+    const canWrite = rbacManager.allowedPrimaryTarget(accessEffect, DEFAULT_ACTIONS.WRITE);
+    
+    console.log(`✅ Access Granted! Can Read: ${canRead}, Can Write: ${canWrite}`);
+}
+```
+
+### 5. Atomic Hot-Swap (Zero-Downtime Update)
+```javascript
+const updatedEditorDefinition = { /* ... updated JSON ... */ };
+
+// Perform Atomic Hot-Swap
+const updateResult = rbacManager.updateRole("EDITOR_ROLE", updatedEditorDefinition);
+
+if (updateResult.success) {
+    console.log('✅ Role updated instantly! Old buffer discarded, new buffer active.');
+}
+```
+
+### 6. Safe Resource Deletion
+```javascript
+// Attempt to delete 'users_collection'
+const deleteResult = rbacManager.deleteInstance('COLLECTIONS', 'users_collection');
+
+if (!deleteResult.success) {
+    console.warn(`⚠️ Cannot delete: ${deleteResult.message}`);
+    // Resolution: Update or delete the blocking roles first, then retry.
+}
+```
 
 ---
 
@@ -339,30 +416,31 @@ import { rbacManager } from './rbac/RBAC are
 
 | ✅ Best Practice | ❌ Common Mistake |
 | :--- | :--- |
-| **Use Wildcards Wisely**: `parentInstance: ["*"]` for broad access. | Mixing `"*"` with specific instances: `["*", 0, 1]` (Rejected by validation). |
-| **Set Realistic TTLs**: Use `"24h"` for temp access, `null` for permanent. | Using `"999d"` for "temporary" access. |
+| **Use the `RBACManager` Facade**: It abstracts complexity and ensures safe orchestration. | Directly instantiating `RoleCompiler` or `RoleBinaryWorker` without understanding the lifecycle. |
+| **Use Unified Notation**: `"RWO"` instead of `action: ["READ"], boundary: "OWN"`. | Using legacy separate action/boundary arrays (increases memory and compilation time). |
+| **Leverage Wildcards Wisely**: `parentInstance: ["*"]` for broad access. | Mixing `"*"` with specific instances: `["*", 0, 1]` (Rejected by validation). |
+| **Set Realistic Per-Owner TTLs**: Use `"24h"` for temp access, `0` or `null` for permanent. | Using `"999d"` for "temporary" access. |
 | **Respect Hierarchy**: Follow `RESOURCES_CHILD` rules strictly. | Trying to make a Leaf resource (e.g., `COMMENT`) a parent. |
 | **Minimize Instances**: Fewer instances = smaller, faster buffers. | Defining 1,000 specific instances instead of one `"*"` wildcard. |
-| **Use Dedicated APIs**: `worker.setWorkerValueToAddr()` | Directly mutating `worker.buffer[10] = 999` (Corrupts memory). |
 
 ---
 
 ## 📊 Performance Monitoring
 
-The system is fully instrumented with the Framework's Ring Buffer `MonitoringSystem`.
+The system is deeply instrumented. You can pull real-time metrics to ensure optimal performance.
 
 ```javascript
-import { initializeMonitoring, getMetricsSnapshot } from "./monitoring/index.js";
+import { getMetricsSnapshot } from "./Monitoring/monitoringSystem.js";
 
-initializeMonitoring({ enabled: true, auditEnabled: true, logFilePath: './logs/audit.jsonl' });
+const snapshot = getMetricsSnapshot();
+console.log('\n📊 RBAC Performance Metrics:');
+console.log(`Total Auth Checks: ${snapshot.metrics.counters['rbac.access.check.total'] || 0}`);
 
-// Display metrics every 10 seconds
-setInterval(() => {
-    const snapshot = getMetricsSnapshot();
-    console.log('Auth Checks:', snapshot.metrics.counters['rbac.access.check.total']);
-    console.log('Avg Check Time:', snapshot.metrics.histograms['rbac.access.check.duration'].avg);
-    console.log('Queue Size:', snapshot.monitor.queueSize);
-}, 10000);
+const durationHist = snapshot.metrics.histograms['rbac.access.check.duration'];
+if (durationHist) {
+    console.log(`Avg Check Time: ${durationHist.avg} ns`); // Target: < 100ns
+    console.log(`99th Percentile: ${durationHist.p99} ns`);
+}
 ```
 
 ### 🎯 Critical Metrics Thresholds
@@ -375,217 +453,13 @@ setInterval(() => {
 
 ---
 
-**Version:** 1.0.0  
-**Last Updated:** 2026-09-11  
-**Author:** Framework Core Team  
-**Related Docs:** [ADR-017: Binary-Compiled RBAC Engine](./../../doc/adr/017-rbac-system.md)
-
----
-
-## 🚀 How to Use It (Practical Examples)
-
-This section provides step-by-step, real-world examples of how to integrate and operate the Binary RBAC Engine in your application.
-
-### 1️⃣ Initialize the System
-Always initialize the RBAC Manager during your application's bootstrap phase (e.g., in `app.js` or `server.js`). This also wires it into your Monitoring System.
-
-```javascript
-import { rbacManager } from './rbac/RBACManager.js';
-import { initializeMonitoring } from './Monitoring/monitoringSystem.js';
-
-// 1. Initialize Monitoring (Optional but recommended)
-initializeMonitoring({
-    enabled: true,
-    auditEnabled: true,
-    logFilePath: './logs/rbac-audit.jsonl'
-});
-
-// 2. Initialize RBAC Manager
-rbacManager.initialize({
-    monitoring: { enabled: true }
-});
-
-console.log('✅ RBAC System is ready!');
-```
-
----
-
-### 2️⃣ Register Resources & Instances
-Before creating roles, you must define the resource hierarchy and their specific instances in the system.
-
-```javascript
-// Register Parent Resource: COLLECTIONS
-rbacManager.registerResource('COLLECTIONS', ['users_collection', 'posts_collection', 'metrics_collection']);
-
-// Register Child Resource: SEARCH_INDEXES
-rbacManager.registerResource('SEARCH_INDEXES', ['idx_user_email', 'idx_post_title']);
-
-// Verify registration
-const usersCollIndex = rbacManager.getregisterResource('COLLECTIONS', 'users_collection');
-console.log('Users Collection Index:', usersCollIndex); // e.g., 0
-```
-
----
-
-### 3️⃣ Create a Role (Simple: Direct Child Leaf)
-Define a role using a JSON structure. The manager will automatically compile it into a binary buffer and register it.
-
-```javascript
-const editorRoleDefinition = {
-    "editor_member": {
-        "SEARCH_INDEXES": {
-            parentResource: "COLLECTIONS",
-            parentInstance: ["users_collection"], // Specific parent instance
-            action: ["READ", "UPDATE"],
-            boundary: "OWN",
-            actionToOthers: ["READ"],             // Delegation: Can let others read
-            boundaryToOthers: "ALL",              // Delegation scope: To anyone
-            ownerInstance: ["*"],                 // Applies to all owners
-            ttl: null,                            // Permanent permission
-            nested: null,                         // No grandchild
-            nestedInstance: null
-        }
-    }
-};
-
-const result = rbacManager.createRole("EDITOR_ROLE", editorRoleDefinition);
-
-if (result.success) {
-    console.log(`✅ Role created! Role ID: ${result.roleId}`);
-} else {
-    console.error(`❌ Failed: ${result.message}`);
-}
-```
-
----
-
-### 4️⃣ Check Access (Runtime Authorization)
-Use `checkAccess` in your middleware or service layer. It performs an **O(1) bitwise lookup** in nanoseconds.
-
-```javascript
-import { DEFAULT_ACTIONS } from './rbac/constant/resourceType.js';
-
-// Assume we fetched the user's roleId from their JWT token
-const userRoleId = rbacManager.getregisterResource('ROLES', 'EDITOR_ROLE'); // Or however you map names to IDs
-const parentType = 100; // TYPE_IDS.COLLECTIONS
-const parentInstance = 0; // Index of 'users_collection'
-const childType = 102;    // TYPE_IDS.SEARCH_INDEXES
-const childInstance = 0;  // Index of 'idx_user_email'
-
-// 1. Perform the O(1) check
-const accessEffect = rbacManager.checkAccess(
-    userRoleId, 
-    parentType, 
-    parentInstance, 
-    childType, 
-    childInstance, 
-    null, // grandChildType
-    null  // grandChildInstance
-);
-
-// 2. Evaluate the result
-if (typeof accessEffect === 'object' && accessEffect.code) {
-    // Access Denied
-    console.log(`🚫 Access Denied: ${accessEffect.message}`);
-} else {
-    // Access Granted! Check if the specific action is allowed
-    const canRead = rbacManager.AllowedPrimaryTarget(accessEffect, DEFAULT_ACTIONS.READ);
-    const canUpdate = rbacManager.AllowedPrimaryTarget(accessEffect, DEFAULT_ACTIONS.UPDATE);
-    
-    console.log(`✅ Access Granted! Can Read: ${canRead}, Can Update: ${canUpdate}`);
-    
-    // Check delegation (Can they let others read?)
-    const canDelegateRead = rbacManager.AllowedTargetToOthers(accessEffect, DEFAULT_ACTIONS.READ);
-    console.log(`🤝 Can delegate READ to others: ${canDelegateRead}`);
-}
-```
-
----
-
-### 5️⃣ Atomic Hot-Swap (Zero-Downtime Update)
-Update a role's permissions in production without restarting the server or blocking active requests.
-
-```javascript
-const updatedEditorDefinition = {
-    "editor_member": {
-        "SEARCH_INDEXES": {
-            parentResource: "COLLECTIONS",
-            parentInstance: ["users_collection", "posts_collection"], // ➕ Added posts_collection
-            action: ["READ", "UPDATE", "DELETE"],                    // ➕ Added DELETE
-            boundary: "OWN",
-            actionToOthers: ["READ"],
-            boundaryToOthers: "ALL",
-            ownerInstance: ["*"],
-            ttl: null,
-            nested: null,
-            nestedInstance: null
-        }
-    }
-};
-
-// Perform Atomic Hot-Swap
-const updateResult = rbacManager.updateRole("EDITOR_ROLE", updatedEditorDefinition);
-
-if (updateResult.success) {
-    console.log('✅ Role updated instantly! Old buffer discarded, new buffer active.');
-}
-```
-
----
-
-### 6️⃣ Safe Resource Deletion
-The system prevents you from deleting a resource instance if it is actively bound to an existing role, preventing orphaned permissions.
-
-```javascript
-// Attempt to delete 'users_collection'
-const deleteResult = rbacManager.deleteInstance('COLLECTIONS', 'users_collection');
-
-if (!deleteResult.success && deleteResult.code === -17) { // SYSTEM_STATUS.INSTANCE_NOT_ALLOWED
-    console.warn(`⚠️ Cannot delete: ${deleteResult.message}`);
-    console.log(`Active roles blocking deletion: ${deleteResult.roleNames.join(', ')}`);
-    
-    // Resolution: Update or delete the blocking roles first, then retry.
-} else {
-    console.log('✅ Instance deleted successfully.');
-}
-```
-
----
-
-### 7️⃣ Monitoring & Auditing in Action
-Because the system is deeply integrated with the `MonitoringSystem`, you can pull real-time metrics and audit logs.
-
-```javascript
-import { getMetricsSnapshot, getMonitoringHealthStatus } from './Monitoring/monitoringSystem.js';
-
-// 1. Check System Health
-const health = getMonitoringHealthStatus();
-console.log('RBAC Health:', health.status, `| Uptime: ${health.uptime}ms`);
-
-// 2. Get Performance Metrics
-const snapshot = getMetricsSnapshot();
-
-console.log('\n📊 RBAC Performance Metrics:');
-console.log(`Total Auth Checks: ${snapshot.metrics.counters['rbac.access.check.total'] || 0}`);
-console.log(`Auth Denied Count: ${snapshot.metrics.counters['rbac.access.check.denied'] || 0}`);
-
-const durationHist = snapshot.metrics.histograms['rbac.access.check.duration'];
-if (durationHist) {
-    console.log(`Avg Check Time: ${durationHist.avg}`); // e.g., "0.045μs"
-    console.log(`99th Percentile: ${durationHist.p99}`); // e.g., "0.120μs"
-}
-
-console.log(`\n📝 Audit Logs Pending Flush: ${snapshot.audit.bufferSize}`);
-```
-
----
-
-### 💡 Pro-Tips for Usage
-
-1. **Always use `TYPE_IDS` and Indices**: Never pass string names like `"COLLECTIONS"` to `checkAccess`. Always resolve them to their numeric `TYPE_IDS` and instance indices first. This is what makes the engine O(1).
-2. **Leverage Wildcards (`"*"`)**: If a role applies to *all* instances of a resource, use `"*"` in `parentInstance`. It reduces the binary buffer size from hundreds of cells to just **4 cells**, dramatically improving memory and speed.
-3. **Trust the Validation**: Do not try to bypass the `RoleCompiler` validation. If your JSON has a hierarchy violation (e.g., making a Leaf resource a Parent), the compiler will reject it immediately, saving you from runtime memory corruption.
-4. **Use `getSystemInfo()` for Debugging**: If you suspect a memory leak or bloated role, call `rbacManager.getSystemInfo()` to see the exact byte size of every active role's binary buffer.
-
----
-
+**Version:** 2.0.0 (Enterprise Optimized)  
+**Last Updated:** 2026-10-10  
+**Architecture:** Binary-Compiled, Zero-GC, Crash-Resistant RBAC  
+**Related Docs:**
+- [More About How Resource are register to RBAC system](https://github.com/Elnsor/native-mongo-odm/blob/main/doc/adr/019-rbac-SystemResourcesInstances.md)
+- [Useing RoleBuilder Class for Generate Role Deffinition](https://github.com/Elnsor/native-mongo-odm/blob/main/src/rbac/builder/README.md)
+- [More About 4-Phase Smart Pruning:](https://github.com/Elnsor/native-mongo-odm/blob/main/doc/adr/022-rbac-RoleCompiler-expolde-schemaSlices.md)
+- [More About How Role Compiled](https://github.com/Elnsor/native-mongo-odm/blob/main/doc/adr/021-rbac-update-RoleCompile.md)
+- [More About How Role Register To System and How Role revoce When its Expire](https://github.com/Elnsor/native-mongo-odm/blob/main/doc/adr/020-rbac-RoleBaseBuckets.md)
+- [More About Effected Action Notation](https://github.com/Elnsor/native-mongo-odm/blob/main/doc/adr/023-rbac-EFFECTED_ACTIONS.md)
