@@ -60,7 +60,8 @@ export const isListed = (list) => Array.isArray(list) && list.length > 0;
  */
 export function normalizeTTLToTimestamp(ttl) {
     let targetTimeStamp;
-    if (!ttl) return 0;
+    if(ttl === 0) return 0;
+    if (!ttl) return -1;
 
     const nowInSeconds = Math.floor(Date.now() / 1000);
 
@@ -75,6 +76,7 @@ export function normalizeTTLToTimestamp(ttl) {
     // Case 2: String Duration -> Parse unit and add to current time
     if (typeof ttl === 'string') {
         const seconds = parseDurationStringToSeconds(ttl);
+        if(seconds<0) return seconds;
         targetTimeStamp= seconds > 0 ? nowInSeconds + seconds : 0;
        
     }
@@ -96,20 +98,91 @@ export function normalizeTTLToTimestamp(ttl) {
 }
 
 /**
- * Helper to convert duration strings ("30s", "10m", "2h", "7d") into total seconds
- */
+ * Parses a duration string into an equivalent total number of seconds.
+ * 
+ * Supports flexible combinations of time units and ignores whitespace.
+ * Pure numeric strings are treated as raw seconds.
+ * 
+ * Supported Units:
+ * - `s` : Seconds
+ * - `m` : Minutes
+ * - `h` : Hours
+ * - `d` : Days
+ * - `w` or `W` : Weeks (calculated as 7 days)
+ * - `M` : Months (calculated as 30 days)
+ * - `y` or `Y` : Years (calculated as 365 days)
+ *
+ * @param {string} str - The duration string to parse (e.g., "1d 12h", "30m", "3600", "1Y 2M").
+ * @returns {number} The total duration in seconds, or `-1` if the input is invalid or malformed.
+ * 
+ * @example
+ * parseDurationStringToSeconds("3600");         // Returns: 3600
+ * parseDurationStringToSeconds("1h 30m");       // Returns: 5400
+ * parseDurationStringToSeconds("1d12h");        // Returns: 129600
+ * parseDurationStringToSeconds("1Y 2M 3w");     // Returns: 39139200
+ * parseDurationStringToSeconds("10h invalid");  // Returns: -1
+ * */
+
 export function parseDurationStringToSeconds(str) {
-    const match = str.trim().match(/^(\d+)([smhd])?$/);
-    if (!match) return 0;
-
-    const value = parseInt(match[1], 10);
-    const unit = match[2] || 's'; // Default to seconds if no unit provided (e.g. "3600")
-
-    switch (unit) {
-        case 's': return value;            // Seconds
-        case 'm': return value * 60;       // Minutes
-        case 'h': return value * 3600;     // Hours
-        case 'd': return value * 86400;    // Days
-        default: return value;
+    if (typeof str !== 'string') return -1;
+    const trimmed = str.trim();
+    if(trimmed === "") return -1;
+    
+    // Pure number defaults to seconds (e.g., "3600")
+    if (/^\d+$/.test(trimmed)) {
+        return parseInt(trimmed, 10);
     }
+
+    // Remove all whitespace to allow flexible formats like "1d 10h" or "1d10h"
+    const cleaned = trimmed.replace(/\s+/g, '');
+    
+    // Regex to match number + unit combinations
+    // Y/y = Year, M = Month, W/w = week , d = day, h = hour, m = minute, s = second
+    const regex = /(\d+)([YyWwMdhms])/g;
+    
+    //  Strict Validation: Ensure the ENTIRE string is composed of valid chunks
+    const reconstructed = cleaned.replace(regex, '');
+    if (reconstructed.length > 0) {
+        return -1; // Invalid characters or unsupported format found
+    }
+
+    let totalSeconds = 0;
+    let match;
+    
+    // Reset regex index to ensure proper iteration
+    regex.lastIndex = 0;
+    
+    // 4. Calculate total seconds from all matched chunks
+    while ((match = regex.exec(cleaned)) !== null) {
+        const value = parseInt(match[1], 10);
+        const unit = match[2];
+        
+        switch (unit) {
+            case 'y':
+            case 'Y':
+                totalSeconds += value * 31536000; // 1 Year = 365 Days
+                break;
+            case 'w':
+            case 'W':
+                totalSeconds += value * 604800;    // Weeks (7 days * 86400 seconds)
+                break;
+            case 'M':
+                totalSeconds += value * 2592000;  // 1 Month = 30 Days
+                break;
+            case 'd':
+                totalSeconds += value * 86400;    // 1 Day = 24 Hours
+                break;
+            case 'h':
+                totalSeconds += value * 3600;     // 1 Hour = 60 Minutes
+                break;
+            case 'm':
+                totalSeconds += value * 60;       // 1 Minute = 60 Seconds
+                break;
+            case 's':
+                totalSeconds += value;            // Seconds
+                break;
+        }
+    }
+    
+    return totalSeconds;
 }
