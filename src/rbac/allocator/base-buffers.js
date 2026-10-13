@@ -24,7 +24,7 @@ export class RowBinaryAllocator {
        
 
         this.totalSize = 0;
-        this.buffer = {};
+       
         this.pTi = {};
         this.globalStriders = {}
         this.wildcard=STRIDER_SIZES.WILDCARD_INDEX;
@@ -44,7 +44,7 @@ export class RowBinaryAllocator {
 
     addGroupRoles(GroupRolesName) {
         const GroupId = resourceInstance.getRoleId(GroupRolesName);
-        if (!GroupId) return {code:SYSTEM_STATUS.ROLE_NOT_FOUND,message:`not valid Role ${GroupRolesName}`};
+        if (GroupId.code !== undefined ) return false;
         this.groupRolesPid = GroupId;
         this.striders = this.roles.striders;
       
@@ -56,7 +56,7 @@ export class RowBinaryAllocator {
         this._pathsBufferInstanceSize = this.roles._pathsBufferInstanceSize;
         this._pathsBufferSize = this.roles._pathsBufferSize;
         this._pathsBufferInstanceCounts = this.roles._pathsBufferInstanceCounts
-        this.buffer = this.#createMemoryBuffer();
+        
         
 
         this.childCompactTree = this.roles.getChildCompactTree();
@@ -68,25 +68,7 @@ export class RowBinaryAllocator {
 
     }
 
-    /**
-     * @return {Uint8Array}
-     */
-    #createMemoryBuffer() {
-
-       const requiredBytes = this.totalSize;
-       const arrayType=STRIDER_SIZES.WILDCARD_ARRAY_TYPE
-
-    
-    if (this.buffer instanceof arrayType && this.buffer.length >= requiredBytes) {
-        this.buffer.fill(0); 
-        return this.buffer;
-    }
-
-   
-    return new arrayType(requiredBytes);
-    }
-   
-    
+       
    /**
  * @param {number} parentGlobal - Parent Global Index
  * @param {ResourcePid} childType - Child ResourcePid
@@ -114,6 +96,11 @@ translateChildGlobalToCompact(parentGlobal, childType, childGlobal,level=2) {
 
          return childTypeMap.get(childGlobal) ?? childTypeMap.get(this.wildcard) ?? -1;
     }
+
+    getNested2keyGrandChildCompact(parentId, grandChildType, nestedChildIndex, granChildIndex){
+        return this.roles.getNestedFlaten2keyGrandChildCompact(parentId, grandChildType, nestedChildIndex, granChildIndex) ;
+    }
+    
     /**
    
     /**
