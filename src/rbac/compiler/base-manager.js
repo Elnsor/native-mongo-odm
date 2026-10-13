@@ -55,6 +55,25 @@ export class ResourceRoleGroupManager {
 
         this._pathsBufferInstanceCounts++;
     }
+/**
+ * return the Length of current Path Buffer 
+ */
+    get pathBuffersSize(){
+        return this._pathsBuffer.length
+    }
+    /**
+     * return how many instances current in path Buffer
+     */
+
+    get pathBuffersInstanceCount(){
+        return this._pathsBufferInstanceCounts;
+    }
+    /**
+     * return the how many usage elements in current in path buffer 
+     */
+    get pathBuffersUsageSize(){
+        return this._pathsBufferInstanceCounts * this._pathsBufferInstanceSize;
+    }
 
 
     getPTI() {
@@ -128,7 +147,7 @@ export class ResourceRoleGroupManager {
 
         const parentPID=TYPE_IDS[parentName];
         const index=resourceInstance.getResourceInstanceIndex(parentName,instanceName);
-        if(index.code) return index;
+        if(index?.code !== undefined) return index;
 
         return this.schemaSlices.get(parentPID).get(index);
 
@@ -199,10 +218,10 @@ export class ResourceRoleGroupManager {
                   if (ins.EffectedActionToOthers && EFFECT_ACTION[ins.EffectedActionToOthers] === undefined) {
                     return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: Invalid EffectedAction '${ins.EffectedAction}' for instance '${ins.name}'` };
                 }
-                if(ins.ttl !== 0 ){
+                if(ins.ttl){
                     const nTtl=normalizeTTLToTimestamp(ins.ttl)
                     if(nTtl<0)  return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: Invalid ttl '${ins.ttl}' for instance '${ins.name}'` };
-                    ins.ttl=nTtl;
+                   
                 }
             }
 
@@ -259,7 +278,7 @@ export class ResourceRoleGroupManager {
                 return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: Resource ${leafName} is not a member of ${parentResource}` };
             }
         }
-        if(ttl !==0){
+        if(ttl){
             const nTtl=normalizeTTLToTimestamp(ttl);
             if(nTtl<0) return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: Invalid ttl '${ttl}' for Leaf '${leafName}'` };
         }
