@@ -66,7 +66,7 @@ checkAccess(GroupRoleId, parentId, parentInstanceIndex, child = null, childInsta
         if (grandChild !== null) {
 
             if (wildCard) {
-                grandChildCompact = role.translateWildCardGlobalToCompact(parentId, grandChild, grandChildIndex);
+                grandChildCompact = role.getNested2keyGrandChildCompact(role.wildcard, grandChild, childInstanceIndexrandChildIndex);
 
             } else {
 
@@ -117,20 +117,19 @@ checkAccess(GroupRoleId, parentId, parentInstanceIndex, child = null, childInsta
         if (access && access.code === SYSTEM_STATUS.PERMISSION_EXPIRED) {
             const newAddr = role.geteffected(GroupRoleId, parentId, parnetIns, child, childCompact, grandChild, grandChildCompact);
 
-            // checking address type
-            if (typeof newAddr === 'number') {
-                const memberId = role.getEffectedValue(newAddr + 1);
+           
+           // checking address type
+        if (typeof newAddr === 'number') {
+
+            // DELEGATE MUTATION TO THE WORKER and Keep buffer private
+            const memberId = role.handleExpirationAt(newAddr);
+            
+            if (memberId !== null) {
                 const expiredResourceType = grandChild ? grandChild : child;
                 RoleBaseBuckets.addToExpierdBucket(GroupRoleId, memberId, expiredResourceType);
-                /**
-                 * new version get address 
-                 * initialized ttl to zero its not trigring again 
-                 * initialize action to zere the is denieded
-                 */
-                 role.setWorkerValueToAddr(newAddr + 2, 0);
-                // Set Effects to 0 (NONE) so access is implicitly denied
-                 role.setWorkerValueToAddr(newAddr + 3, 0);
             }
+        }
+         return { code: SYSTEM_STATUS.ACCESS_DENIED, message:`Role or Role Member is expired`}
         }
 
         return access; // 
@@ -193,7 +192,7 @@ checkAccessWithMonitor(GroupRoleId, parentId, parentInstanceIndex, child = null,
     if(grandChild !== null){
 
         if(wildCard){
-            grandChildCompact=role.translateWildCardGlobalToCompact(parentId,grandChild,grandChildIndex);
+            grandChildCompact=role.getNested2keyGrandChildCompact(role.wildcard,grandChild,childInstanceIndex,grandChildIndex);
 
         }else{
 
@@ -244,17 +243,21 @@ checkAccessWithMonitor(GroupRoleId, parentId, parentInstanceIndex, child = null,
 if (access && access?.code === undefined) return access;
   
    // check if this access is expired triger or add 
-    if (access && access.code === SYSTEM_STATUS.PERMISSION_EXPIRED) {
+    if (access && access?.code === SYSTEM_STATUS.PERMISSION_EXPIRED) {
         const newAddr = role.geteffected(GroupRoleId, parentId, parnetIns, child, childCompact, grandChild, grandChildCompact);
 
           record(EVENT_TYPES.RBAC_AUTH_EXPIRED,EVENT_MTYPES.METRIC_C);
         
         // checking address type
         if (typeof newAddr === 'number') {
-            const memberId = role.getEffectedValue(newAddr + 1);
-            const expiredResourceType = grandChild ? grandChild : child;
-            RoleBaseBuckets.addToExpierdBucket(GroupRoleId, memberId, expiredResourceType);
+             const memberId = role.handleExpirationAt(newAddr);
+            
+            if (memberId !== null) {
+                const expiredResourceType = grandChild ? grandChild : child;
+                RoleBaseBuckets.addToExpierdBucket(GroupRoleId, memberId, expiredResourceType);
+            }
         }
+        return { code: SYSTEM_STATUS.ACCESS_DENIED, message:`Role or Role Member is expired`}
     }
   
     return access; // 
