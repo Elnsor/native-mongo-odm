@@ -8,7 +8,7 @@ import { pathToFileURL } from 'url';
 export async function loadDirectory(dirPath) {
   // 1. Resolve to an absolute path from the root directory
   const absoluteDir = path.resolve(process.cwd(), dirPath);
-  console.log(absoluteDir);
+  
 
   // 2. Read all file names in the directory
   const files = fs.readdirSync(absoluteDir);
