@@ -85,14 +85,14 @@ export class RoleFileRepository {
      * @param {string} dirPath - Directory to store role files
      * @returns {Promise<Object>} Result object
      */
-    async saveRoleToDedicatedFile(roleName, roleDefinition, dirPath) {
+    async saveRoleToDedicatedFile(roleName, roleDefinition, dirPath,options={}) {
         try {
             await this.#ensureDirectoryExists(dirPath);
             const filePath = this.#getDedicatedFilePath(dirPath, roleName);
             
             const roleData = {
-                version: "1.0",
-                type: "ROLE_DEFINITION",
+                version: options.version || "1.0",
+                type: options.type || "ROLE_DEFINITION",
                 roleName: roleName,
                 definition: roleDefinition,
                 savedAt: new Date().toISOString()
