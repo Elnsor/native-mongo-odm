@@ -35,7 +35,7 @@ export class SystemResourcesIntstances {
        
        
         this.roleList[RoleName]=this.roleList.counter;
-        this.reverseRoleList[counter]=RoleName;
+        this.reverseRoleList[this.roleList.counter]=RoleName;
         this.roleList.counter++;
         this.rolesCount++;
 
@@ -83,7 +83,7 @@ deleteRolebyName(GroupRoleName){
  */
     getRoleNameById(roleId){
         if(this.reverseRoleList[roleId] === undefined) return { code: SYSTEM_STATUS.ROLE_NOT_FOUND, message: `ResourceInstanceError: Role Id ${roleId} not Exist Id` }
-        return this.roleList[roleId];
+        return this.reverseRoleList[roleId];
     }
     
     /**
@@ -116,7 +116,7 @@ deleteRolebyName(GroupRoleName){
             counter = this.resourcelist[res_pid].counter;
         }
 
-        if (this.resourcelist[res_pid].index[instanceName]) return { code: SYSTEM_STATUS.INSTANCE_EXIST, message: `ResourceInstanceError:existed instance resource Name ${instanceName}` }
+        if (this.resourcelist[res_pid].index[instanceName] !== undefined) return { code: SYSTEM_STATUS.INSTANCE_EXIST, message: `ResourceInstanceError:existed instance resource Name ${instanceName}` }
 
         this.resourcelist[res_pid].index[instanceName] = counter;
         this.resourcelist[res_pid].counter++;
@@ -185,7 +185,7 @@ getResourceInstanceIndex(res_Name, instanceName) {
          if(isParentActive) return { success: false, code: SYSTEM_STATUS.DELETE_ERROR , message: `ResourceInstanceError: Cant Delelte instance ${instanceName} of type ${res_Name} it linked to Active role` };
     
    
-    delete this.resourcelist[res_pid].index[res_Name];
+    delete this.resourcelist[res_pid].index[instanceName];
 
         this.totalResourcesDeleteCount++;
         this.totalResourcesCount--;
@@ -218,7 +218,10 @@ getResourceInstanceIndex(res_Name, instanceName) {
         this.resourcelist=Object.create(null);
         this.roleList=Object.create(null);
         this.roleList["counter"]=1;
-        this.rolesCount=0;
+        this.reverseRoleList = Object.create(null); 
+        this.rolesCount = 0;
+        this.totalResourcesCount = 0;
+        this.totalResourcesDeleteCount = 0
     }
 
     getStats() {
