@@ -204,7 +204,7 @@ export class ResourceRoleGroupManager {
             return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: Leaf ${leafName} List in Parent Resource ${parentResource} does not allow other instances alongside wildcard '*'` };
         }
 
-        
+        const timeNow=Math.floor(Date.now()/1000);
          for (let i = 0; i < ownerInstance.length; i++) {
             const ins = ownerInstance[i];
             if (typeof ins === 'object' && ins !== null) {
@@ -220,7 +220,7 @@ export class ResourceRoleGroupManager {
                 }
                 if(ins.ttl){
                     const nTtl=normalizeTTLToTimestamp(ins.ttl)
-                    if(nTtl<0)  return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: Invalid ttl '${ins.ttl}' for instance '${ins.name}'` };
+                    if(timeNow > nTtl || nTtl<0)  return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: Invalid  Or Expired ttl  '${ins.ttl}' for instance '${ins.name}'` };
                    
                 }
             }
@@ -280,7 +280,7 @@ export class ResourceRoleGroupManager {
         }
         if(ttl){
             const nTtl=normalizeTTLToTimestamp(ttl);
-            if(nTtl<0) return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: Invalid ttl '${ttl}' for Leaf '${leafName}'` };
+            if( timeNow > nTtl || nTtl<0) return { code: SYSTEM_STATUS.INVALID_SCHEMA, message: `SchemaValidationError: Invalid Or Expired Shared ttl '${ttl}' for Leaf '${leafName}'` };
         }
 
         return 0; // Validation Passed

@@ -20,11 +20,11 @@ export class RoleCompiler extends ResourceRoleGroupManager{
         this.childCompactTree=new Map();
         this.wildcardCompactTree=new Map();
 
-         this.nestedChildCompactoffsetTree= new Map();
-    this.nestedGrandChildCompactTree=new Map();
-    this.memberTableMap=new Map();
-    this.pathsMemeber= Object.create(null);
-    this.ListOfMemberGroups={};
+        this.nestedChildCompactoffsetTree= new Map();
+        this.nestedGrandChildCompactTree=new Map();
+        this.memberTableMap=new Map();
+        this.pathsMemeber= Object.create(null);
+        this.ListOfMemberGroups={};
 
     }
 
@@ -1126,8 +1126,19 @@ checkNaming=false
  * @returns {boolean|object} true for valid GroupRole or {code:status code , message} for not valid GroupRoles
  */
     groupRoleValidationSchema() {
+        const entries=Object.entries(this.ListOfGroups);
+      
+        if(entries.length === 0 ) {
+            return {code:SYSTEM_STATUS.VALIDATION_SCHEMA_FAILED, message : `SchemaValidationError: Empty Role Not Allowed`}
+        }
 
-        for (const [groupkey, groupElement] of Object.entries(this.ListOfGroups)) { // iterate over all groups group role1 , group role2
+        for (const [groupkey, groupElement] of entries) { // iterate over all groups group role1 , group role2
+      
+            if(groupkey.trim().length === 0 ){
+                return {code:SYSTEM_STATUS.VALIDATION_SCHEMA_FAILED, message : `SchemaValidationError: Empty Role member name Not Allowed`}
+            }
+      
+            let count=0;
 
             for (const [leaf, roleElement] of Object.entries(groupElement)) {// for leafs roles inside each group role
                 if (roleElement === null) continue;
@@ -1135,8 +1146,13 @@ checkNaming=false
                 const validate = this.validateRolElement(leaf, roleElement);
 
                 if (validate !== 0) return validate;
+                count++;
               }
+      
+              if(count === 0) return  {code:SYSTEM_STATUS.VALIDATION_SCHEMA_FAILED, message : `SchemaValidationError: Empty Role member Object Not Allowed`}
+
     }
+
      return true;
 }
 
@@ -1212,23 +1228,20 @@ checkNaming=false
                   nestedEntry.compactIndex=childCompact;
 
             for (const owner of allowedOwners) {
+
                 const lName = owner.name;
                 const lIndex = resourceInstance.getResourceInstanceIndex(leafName, lName);
                 if (lIndex?.code !== undefined) return lIndex;
 
-                const gChildCompact = (resIndex === wildcardIndex)
-                    ? this.registerWildCardCompact(respid, leafPid, lIndex)
-                    : this.registerNestedFlaten2keyGrandChildCompact(resIndex,leafPid,nestedchildId,lIndex);
+                const gChildCompact = this.registerNestedFlaten2keyGrandChildCompact(resIndex,leafPid,nestedchildId,lIndex);
 
                     owner.compactIndex=gChildCompact;
 
                 const ownerPrimary = EFFECT_ACTION[owner.EffectedAction] || defaultPrimary;
                 const ownerOthers = EFFECT_ACTION[owner.EffectedActionToOthers] || defaultOthers;
                 const finalEffectedAction = (ownerOthers << 16) | ownerPrimary;
-
                 const ownerTtl = owner.ttl || 0;
-                if (ownerTtl > 0 && Math.floor(Date.now() / 1000) >= ownerTtl) continue;
-
+               
                 this.setPathBuffer(
                     roleId, memberPath.memberId, respid, resIndex,
                     nestedPid, childCompact,
@@ -1262,7 +1275,7 @@ checkNaming=false
             const finalEffectedAction = (ownerOthers << 16) | ownerPrimary;
 
             const ownerTtl = owner.ttl || 0;
-            if (ownerTtl > 0 && Math.floor(Date.now() / 1000) >= ownerTtl) continue;
+            
 
             this.setPathBuffer(
                 roleId, memberPath.memberId, respid, resIndex,
@@ -1322,7 +1335,7 @@ checkNaming=false
             
     }
     this.ListOfMemberGroups=memberRoles;
-    this.ListOfGroups=mergedMap;
+    
 
     const result = this.parentToLeafMap(memberRoles, roleId);
         
@@ -1821,6 +1834,7 @@ compile() {
     /// calculate striders size and offset and shift for each groupRoles 
 
     this.calculateTotalStridersSchemaSlice();
+    return true;
 }
     
 

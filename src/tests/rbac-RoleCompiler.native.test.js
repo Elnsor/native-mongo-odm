@@ -7,7 +7,16 @@ import {
     TYPE_IDS, 
     SYSTEM_STATUS,
     SIZE_POWER,
+    EFFECT_ACTION,
 } from '../rbac/constant/resourceType.js';
+import { rbacManager } from '../rbac/rbacManager.js';
+
+/**
+ * update this test file to be align wiht new updated
+ * its not cover all casses her 
+ * ttl cases and expiration are in its own test file 
+ * merged and explode roles are in its own  test file 
+ */
 
 describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
     
@@ -31,11 +40,9 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
-                        ownerInstance: ['doc_1'],
+                        action: "RO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
                         nested: null,
                         nestedInstance: null,
                         ttl: null
@@ -44,6 +51,7 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             };
 
             const compiler = new RoleCompiler('TEST_ROLE', roleDefinition);
+            compiler.compile();
 
             assert.strictEqual(compiler.groupRoleName, 'TEST_ROLE');
             assert.ok(compiler.striders);
@@ -51,8 +59,11 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             assert.ok(compiler.globalstriders);
             assert.ok(compiler.childCompactTree instanceof Map);
             assert.ok(compiler.wildcardCompactTree instanceof Map);
+            assert.ok(compiler.nestedChildCompactoffsetTree instanceof Map);
+            assert.ok(compiler.nestedGrandChildCompactTree)
             assert.ok(compiler.pTi instanceof Map);
             assert.ok(compiler.schemaSlices instanceof Map);
+            assert.ok(compiler.memberTableMap instanceof Map);
         });
 
         test('should inherit from ResourceRoleGroupManager', () => {
@@ -95,8 +106,8 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             compiler = new RoleCompiler('ACTION_TEST_ROLE', {});
         });
 
-        test('should combine actions correctly', () => {
-            const effects = compiler.geteffectedActionBoundary(['READ', 'WRITE'], 'OWN');
+        test('should read new Effected Action Notation  correctly', () => {
+            const effects = EFFECT_ACTION["RWO"]
             
             // READ = 1, WRITE = 2, OWN = 16
             // Expected: 1 | 2 | 16 = 19
@@ -109,23 +120,20 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             assert.strictEqual(effects, 17);
         });
 
-        test('should handle all actions', () => {
-            const effects = compiler.geteffectedActionBoundary(
-                ['READ', 'WRITE', 'UPDATE', 'DELETE'], 
-                'ALL'
-            );
+        test('should handle all actions in new Action Notation', () => {
+           const effects=EFFECT_ACTION['RWUDA'];
             // 1 | 2 | 4 | 8 | 64 = 79
             assert.strictEqual(effects, 79);
         });
 
-        test('should handle NONE boundary', () => {
-            const effects = compiler.geteffectedActionBoundary(['READ'], 'NONE');
+        test('should handle NONE actions in new Action Notation', () => {
+              const effects=EFFECT_ACTION['NONE'];
             // READ = 1, NONE = 0
-            assert.strictEqual(effects, 1);
+            assert.strictEqual(effects, 0);
         });
 
         test('should handle LIMITED boundary', () => {
-            const effects = compiler.geteffectedActionBoundary(['READ'], 'LIMITED');
+              const effects=EFFECT_ACTION['RL'];
             // READ = 1, LIMITED = 32
             assert.strictEqual(effects, 33);
         });
@@ -140,31 +148,33 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
         beforeEach(() => {
 
             compiler = new RoleCompiler('COMPACT_TEST_ROLE', {});
+          
+            
         });
 
-        test('registerChildCompact should create new compact index', () => {
-            const compact = compiler.registerChildCompact(0, TYPE_IDS.DOCUMENTS, 0);
+        test('registerChildCompact should create new compact index using new 2 level nested map  ', () => {
+            const compact = compiler.register2KeyChildCompact(0, TYPE_IDS.DOCUMENTS, 0);
             assert.strictEqual(compact, 0);
         });
 
         test('registerChildCompact should increment for different children', () => {
-            const compact1 = compiler.registerChildCompact(0, TYPE_IDS.DOCUMENTS, 0);
-            const compact2 = compiler.registerChildCompact(0, TYPE_IDS.DOCUMENTS, 1);
-            const compact3 = compiler.registerChildCompact(0, TYPE_IDS.DOCUMENTS, 2);
+            const compact1 = compiler.register2KeyChildCompact(0, TYPE_IDS.DOCUMENTS, 0);
+            const compact2 = compiler.register2KeyChildCompact(0, TYPE_IDS.DOCUMENTS, 1);
+            const compact3 = compiler.register2KeyChildCompact(0, TYPE_IDS.DOCUMENTS, 2);
 
             assert.strictEqual(compact1, 0);
             assert.strictEqual(compact2, 1);
             assert.strictEqual(compact3, 2);
         });
 
-        test('registerChildCompact should return existing compact for duplicate', () => {
-            const compact1 = compiler.registerChildCompact(0, TYPE_IDS.DOCUMENTS, 0);
-            const compact2 = compiler.registerChildCompact(0, TYPE_IDS.DOCUMENTS, 0);
+        test('register2KeyChildCompact should return existing compact for duplicate', () => {
+            const compact1 = compiler.register2KeyChildCompact(0, TYPE_IDS.DOCUMENTS, 0);
+            const compact2 = compiler.register2KeyChildCompact(0, TYPE_IDS.DOCUMENTS, 0);
 
             assert.strictEqual(compact1, compact2);
         });
 
-        test('registerChildCompact should handle different parent globals', () => {
+        test('register2KeyChildCompact should handle different parent globals', () => {
             const compact1 = compiler.registerChildCompact(0, TYPE_IDS.DOCUMENTS, 0);
             const compact2 = compiler.registerChildCompact(1, TYPE_IDS.DOCUMENTS, 0);
 
@@ -172,9 +182,9 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             assert.strictEqual(compact2, 0); // Different parent, new tree
         });
 
-        test('registerChildCompact should handle different child types', () => {
-            const compact1 = compiler.registerChildCompact(0, TYPE_IDS.DOCUMENTS, 0);
-            const compact2 = compiler.registerChildCompact(0, TYPE_IDS.SEARCH_INDEXES, 0);
+        test('register2KeyChildCompact should handle different child types', () => {
+            const compact1 = compiler.register2KeyChildCompact(0, TYPE_IDS.DOCUMENTS, 0);
+            const compact2 = compiler.register2KeyChildCompact(0, TYPE_IDS.SEARCH_INDEXES, 0);
 
             assert.strictEqual(compact1, 0);
             assert.strictEqual(compact2, 0); // Different child type
@@ -185,14 +195,14 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             assert.strictEqual(compact, 0);
         });
 
-        test('getChildCompact should return compact index', () => {
-            compiler.registerChildCompact(0, TYPE_IDS.DOCUMENTS, 0);
-            const compact = compiler.getChildCompact(0, TYPE_IDS.DOCUMENTS, 0);
+        test('get2KeyChildCompact should return compact index', () => {
+            compiler.register2KeyChildCompact(0, TYPE_IDS.DOCUMENTS, 0);
+            const compact = compiler.get2KeyChildCompact(0, TYPE_IDS.DOCUMENTS, 0);
             assert.strictEqual(compact, 0);
         });
 
-        test('getChildCompact should return -1 for non-existent', () => {
-            const compact = compiler.getChildCompact(999, TYPE_IDS.DOCUMENTS, 0);
+        test('get2KeyChildCompact should return -1 for non-existent', () => {
+            const compact = compiler.get2KeyChildCompact(999, TYPE_IDS.DOCUMENTS, 0);
             assert.strictEqual(compact, -1);
         });
 
@@ -223,24 +233,32 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
     });
 
     // ==========================================================================
-    // TEST SUITE 4: parsedGroupRoleValidation
+    // TEST SUITE 4: groupRoleValidationSchema
     // ==========================================================================
-    describe('Test 4: parsedGroupRoleValidation', () => {
+    describe('Test 4: groupRoleValidationSchema()', () => {
+        beforeEach(()=>{
+             rbacManager.reset();
+            rbacManager.registerResource([{
+                "COLLECTIONS":['users_collection'],
+            }])
+
+        })
         test('should return true for valid role definition', () => {
 
-            resourceInstance.AddResourceInstance('COLLECTIONS', 'users_collection');
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_1');
+            rbacManager.reset();
+            rbacManager.registerResource([{
+                "COLLECTIONS":['users_collection'],
+            }])
+
 
             const roleDefinition = {
                 'member_1': {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
-                        ownerInstance: ['doc_1'],
+                        action: "RO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
                         nested: null,
                         nestedInstance: null,
                         ttl: null
@@ -249,24 +267,26 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             };
 
             const compiler = new RoleCompiler('VALID_ROLE', roleDefinition);
-            const result = compiler.parsedGroupRoleValidation();
+            const result = compiler.groupRoleValidationSchema();
             assert.strictEqual(result, true);
         });
 
         test('should return error for invalid parent resource', () => {
 
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_1');
+            rbacManager.reset();
+            rbacManager.registerResource([{
+                "COLLECTIONS":['users_collection'],
+            }])
+
 
             const roleDefinition = {
                 'member_1': {
                     'DOCUMENTS': {
                         parentResource: 'INVALID_RESOURCE',
                         parentInstance: ['users_collection'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
-                        ownerInstance: ['doc_1'],
+                         action: "RO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
                         nested: null,
                         nestedInstance: null,
                         ttl: null
@@ -275,24 +295,26 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             };
 
             const compiler = new RoleCompiler('INVALID_PARENT_ROLE', roleDefinition);
-            const result = compiler.parsedGroupRoleValidation();
+            const result = compiler.groupRoleValidationSchema();
             assert.strictEqual(result.code, SYSTEM_STATUS.INVALID_RESOURCE_PID);
         });
 
         test('should return error for empty parent instance list', () => {
 
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_1');
+               rbacManager.reset();
+            rbacManager.registerResource([{
+                "COLLECTIONS":['users_collection'],
+            }])
+
 
             const roleDefinition = {
                 'member_1': {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: [],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
-                        ownerInstance: ['doc_1'],
+                        action: "RO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
                         nested: null,
                         nestedInstance: null,
                         ttl: null
@@ -301,25 +323,21 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             };
 
             const compiler = new RoleCompiler('EMPTY_PARENT_ROLE', roleDefinition);
-            const result = compiler.parsedGroupRoleValidation();
+            const result = compiler.groupRoleValidationSchema()
             assert.strictEqual(result.code, SYSTEM_STATUS.RESOURCES_EMPTY_LIST);
         });
 
         test('should return error for wildcard mixed with other instances', () => {
 
-            resourceInstance.AddResourceInstance('COLLECTIONS', 'users_collection');
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_1');
-
+           
             const roleDefinition = {
                 'member_1': {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['*', 'users_collection'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
-                        ownerInstance: ['doc_1'],
+                         action: "RO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
                         nested: null,
                         nestedInstance: null,
                         ttl: null
@@ -328,25 +346,22 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             };
 
             const compiler = new RoleCompiler('WILDCARD_MIX_ROLE', roleDefinition);
-            const result = compiler.parsedGroupRoleValidation();
-            assert.strictEqual(result.code, SYSTEM_STATUS.WILDCARD_WITHE_INSTANCE);
+            const result = compiler.groupRoleValidationSchema();
+            assert.strictEqual(result.code,SYSTEM_STATUS.INVALID_SCHEMA);
         });
 
         test('should return error for invalid hierarchy', () => {
 
-            resourceInstance.AddResourceInstance('COLLECTIONS', 'users_collection');
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_1');
+       
 
             const roleDefinition = {
                 'member_1': {
                     'DOCUMENTS': {
                         parentResource: 'USERS', // DOCUMENTS is not child of USERS
                         parentInstance: ['users_collection'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
-                        ownerInstance: ['doc_1'],
+                        action: "RO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
                         nested: null,
                         nestedInstance: null,
                         ttl: null
@@ -355,25 +370,25 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             };
 
             const compiler = new RoleCompiler('INVALID_HIERARCHY_ROLE', roleDefinition);
-            const result = compiler.parsedGroupRoleValidation();
-            assert.strictEqual(result.code, SYSTEM_STATUS.INVALID_HIERARCHY);
+            const result = compiler.groupRoleValidationSchema();
+            assert.strictEqual(result.code, SYSTEM_STATUS.INVALID_SCHEMA);
         });
 
         test('should validate nested role correctly', () => {
-
-            resourceInstance.AddResourceInstance('COLLECTIONS', 'users_collection');
-            resourceInstance.AddResourceInstance('SEARCH_INDEXES', 'idx_1');
-            resourceInstance.AddResourceInstance('FIELD_METRICS', 'metric_1');
+             rbacManager.reset();
+            rbacManager.registerResource({
+                "COLLECTIONS": ['users_collection'],
+                'SEARCH_INDEXES': ['idx_1'],
+                'FIELD_METRICS': ['metric_1'],
+            })
 
             const roleDefinition = {
                 'member_1': {
                     'FIELD_METRICS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
+                        action: "RO",
+                        actionToOthers:'NONE',
                         ownerInstance: ['metric_1'],
                         nested: 'SEARCH_INDEXES',
                         nestedInstance: ['idx_1'],
@@ -383,25 +398,27 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             };
 
             const compiler = new RoleCompiler('VALID_NESTED_ROLE', roleDefinition);
-            const result = compiler.parsedGroupRoleValidation();
+            const result = compiler.groupRoleValidationSchema();
             assert.strictEqual(result, true);
         });
 
         test('should return error for invalid nested hierarchy', () => {
 
-            resourceInstance.AddResourceInstance('COLLECTIONS', 'users_collection');
-            resourceInstance.AddResourceInstance('SEARCH_INDEXES', 'idx_1');
-            resourceInstance.AddResourceInstance('FIELD_METRICS', 'metric_1');
+           rbacManager.reset();
+            rbacManager.registerResource({
+                "COLLECTIONS": ['users_collection'],
+                'SEARCH_INDEXES': ['idx_1'],
+                'FIELD_METRICS': ['metric_1'],
+            })
+
 
             const roleDefinition = {
                 'member_1': {
                     'FIELD_METRICS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
+                        action: "RO",
+                        actionToOthers:'NONE',
                         ownerInstance: ['metric_1'],
                         nested: 'DOCUMENTS', // FIELD_METRICS is not child of DOCUMENTS
                         nestedInstance: ['idx_1'],
@@ -411,30 +428,37 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             };
 
             const compiler = new RoleCompiler('INVALID_NESTED_ROLE', roleDefinition);
-            const result = compiler.parsedGroupRoleValidation();
-            assert.strictEqual(result.code, SYSTEM_STATUS.INVALID_HIERARCHY);
+            const result = compiler.groupRoleValidationSchema();
+            assert.strictEqual(result.code, SYSTEM_STATUS.INVALID_SCHEMA);
         });
     });
 
     // ==========================================================================
-    // TEST SUITE 5: parsedGroupRole (Parsing Phase)
+    // TEST SUITE 5:  usedMemberMergedRoles(); 
+    // -Phase 1: (Merged Phase (Phase 1: Structural Inversion & Smart Pruning) its have its own test file 
+    //-Phase  2: Member Aggregation & Partitioning
+    //Phase 3: Compact Indexing & Buffer Staging (thats done in Test 3 above)
     // ==========================================================================
-    describe('Test 5: parsedGroupRole', () => {
+    describe('Test 5: usedMemberMergedRoles', () => {
+         beforeEach(()=>{
+             rbacManager.reset();
+            rbacManager.bulkRegisterResources({
+                "COLLECTIONS":['users_collection'],
+            })
+
+        });
         test('should parse simple role and populate pTi', () => {
 
-            resourceInstance.AddResourceInstance('COLLECTIONS', 'users_collection');
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_1');
-
+           
+        
             const roleDefinition = {
                 'member_1': {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
-                        ownerInstance: ['doc_1'],
+                        action: "RO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
                         nested: null,
                         nestedInstance: null,
                         ttl: null
@@ -443,7 +467,7 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             };
 
             const compiler = new RoleCompiler('PARSE_SIMPLE_ROLE', roleDefinition);
-            const result = compiler.parsedGroupRole();
+            const result = compiler.usedMemberMergedRoles();
             assert.strictEqual(result, true);
 
             // Verify pTi is populated
@@ -453,20 +477,17 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
         });
 
         test('should parse nested role and populate pTi', () => {
+            rbacManager.registerResource("SEARCH_INDEXES",['idx_1'])
+            rbacManager.registerResource("FIELD_METRICS",['metric_1'])
 
-            resourceInstance.AddResourceInstance('COLLECTIONS', 'users_collection');
-            resourceInstance.AddResourceInstance('SEARCH_INDEXES', 'idx_1');
-            resourceInstance.AddResourceInstance('FIELD_METRICS', 'metric_1');
-
+          
             const roleDefinition = {
                 'member_1': {
                     'FIELD_METRICS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
+                        action: "RO",
+                        actionToOthers:'NONE',
                         ownerInstance: ['metric_1'],
                         nested: 'SEARCH_INDEXES',
                         nestedInstance: ['idx_1'],
@@ -476,7 +497,7 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             };
 
             const compiler = new RoleCompiler('PARSE_NESTED_ROLE', roleDefinition);
-            const result = compiler.parsedGroupRole();
+            const result = compiler.compile();
             assert.strictEqual(result, true);
 
             // Verify pTi is populated
@@ -485,19 +506,15 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
 
         test('should populate childCompactTree', () => {
 
-            resourceInstance.AddResourceInstance('COLLECTIONS', 'users_collection');
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_1');
-
+          
             const roleDefinition = {
                 'member_1': {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
-                        ownerInstance: ['doc_1'],
+                        action: "RO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
                         nested: null,
                         nestedInstance: null,
                         ttl: null
@@ -506,25 +523,23 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             };
 
             const compiler = new RoleCompiler('COMPACT_TREE_ROLE', roleDefinition);
-            compiler.parsedGroupRole();
+            compiler.compile();
 
             assert.ok(compiler.childCompactTree.size > 0);
         });
 
         test('should populate wildcardCompactTree for wildcard roles', () => {
 
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_1');
+           
 
             const roleDefinition = {
                 'member_1': {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['*'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
-                        ownerInstance: ['*'],
+                          action: "RO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
                         nested: null,
                         nestedInstance: null,
                         ttl: null
@@ -533,26 +548,21 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             };
 
             const compiler = new RoleCompiler('WILDCARD_TREE_ROLE', roleDefinition);
-            compiler.parsedGroupRole();
+            compiler.compile();
 
             assert.ok(compiler.wildcardCompactTree.size > 0);
         });
 
         test('should populate pathsBuffer', () => {
 
-            resourceInstance.AddResourceInstance('COLLECTIONS', 'users_collection');
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_1');
-
             const roleDefinition = {
                 'member_1': {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
-                        ownerInstance: ['doc_1'],
+                        action: "RO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
                         nested: null,
                         nestedInstance: null,
                         ttl: null
@@ -561,26 +571,23 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             };
 
             const compiler = new RoleCompiler('PATHS_BUFFER_ROLE', roleDefinition);
-            compiler.parsedGroupRole();
+            compiler.usedMemberMergedRoles();
 
             assert.ok(compiler._pathsBufferInstanceCounts > 0);
         });
 
-        test('should register role member', () => {
+        test('should handle one original Role member translate to one distinct member based one parent type and instance  after merged and prune phase (one instance)', () => {
 
-            resourceInstance.AddResourceInstance('COLLECTIONS', 'users_collection');
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_1');
+   
 
             const roleDefinition = {
                 'member_1': {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
-                        ownerInstance: ['doc_1'],
+                        action: "RO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
                         nested: null,
                         nestedInstance: null,
                         ttl: null
@@ -589,29 +596,101 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             };
 
             const compiler = new RoleCompiler('MEMBER_REGISTER_ROLE', roleDefinition);
-            compiler.parsedGroupRole();
+            compiler.compile();
 
-            const roleId = resourceInstance.getRoleId('MEMBER_REGISTER_ROLE');
-            const memberId = resourceInstance.getRoleMemberIndexByName(roleId, 'member_1');
-            assert.ok(memberId !== undefined);
+            const memberName = 'member-100-0';
+            const memberId=0;
+            assert.ok(compiler.memberTableMap.size>0);
+            assert.equal(memberName,compiler.getRoleMemberNameById(memberId));
         });
 
-        test('should handle multiple members', () => {
+      test('should handle multiple parent Insatnce in original one Role members for same parent Type  translate to multiple distinct members  based on its insatnce index after merged and prune phase (2 instances)', () => {
+
+                 resourceInstance.AddResourceInstance("COLLECTIONS",'products');
+
+            const roleDefinition = {
+                'member_1': {
+                    'DOCUMENTS': {
+                        parentResource: 'COLLECTIONS',
+                        parentInstance: ['users_collection','products'],
+                        action: "RO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
+                        nested: null,
+                        nestedInstance: null,
+                        ttl: null
+                    }
+                }
+            };
+
+            const compiler = new RoleCompiler('MEMBER_REGISTER_ROLE', roleDefinition);
+            compiler.usedMemberMergedRoles();
+
+            const memberName = 'member-100-0';
+            const memberName1 = 'member-100-1';
+            const memberId=0;
+            const memberId1=1;
+            assert.ok(compiler.memberTableMap.size>0);
+            assert.equal(memberName,compiler.getRoleMemberNameById(memberId));
+            assert.equal(memberName1,compiler.getRoleMemberNameById(memberId1));
+        });
+
+         test('should handle multiple parent Insatnce in multiple original Role members for same parent Type  translate to multiple distinct member  based on its insatnce index after merged and prune phase', () => {
+
+                 resourceInstance.AddResourceInstance("COLLECTIONS",'products');
+
+            const roleDefinition = {
+                'member_1': {
+                    'DOCUMENTS': {
+                        parentResource: 'COLLECTIONS',
+                        parentInstance: ['users_collection','products'],
+                        action: "RO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
+                        nested: null,
+                        nestedInstance: null,
+                        ttl: null
+                    }
+                },
+                'member_2': {
+                    'DOCUMENTS': {
+                        parentResource: 'COLLECTIONS',
+                        parentInstance: ['products'],
+                        action: "RO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
+                        nested: null,
+                        nestedInstance: null,
+                        ttl: null
+                    }
+                }
+            };
+
+            const compiler = new RoleCompiler('MEMBER_REGISTER_ROLE', roleDefinition);
+            compiler.usedMemberMergedRoles();
+
+            const memberName = 'member-100-0';
+            const memberName1 = 'member-100-1';
+            const memberId=0;
+            const memberId1=1;
+            assert.ok(compiler.memberTableMap.size>0);
+            assert.equal(memberName,compiler.getRoleMemberNameById(memberId));
+            assert.equal(memberName1,compiler.getRoleMemberNameById(memberId1));
+        });
+
+        test('should handle multiple original Role members for same parent translate to one distinct member after merged and prune phase', () => {
 
             resourceInstance.AddResourceInstance('COLLECTIONS', 'users_collection');
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_1');
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_2');
+         
 
             const roleDefinition = {
                 'member_1': {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
-                        ownerInstance: ['doc_1'],
+                        action: "RO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
                         nested: null,
                         nestedInstance: null,
                         ttl: null
@@ -621,11 +700,9 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection'],
-                        action: ['WRITE'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
-                        ownerInstance: ['doc_2'],
+                        action: "WO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
                         nested: null,
                         nestedInstance: null,
                         ttl: null
@@ -634,15 +711,13 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             };
 
             const compiler = new RoleCompiler('MULTI_MEMBER_ROLE', roleDefinition);
-            const result = compiler.parsedGroupRole();
+            const result = compiler.usedMemberMergedRoles();
             assert.strictEqual(result, true);
 
-            const roleId = resourceInstance.getRoleId('MULTI_MEMBER_ROLE');
-            const member1Id = resourceInstance.getRoleMemberIndexByName(roleId, 'member_1');
-            const member2Id = resourceInstance.getRoleMemberIndexByName(roleId, 'member_2');
-            assert.ok(member1Id !== undefined);
-            assert.ok(member2Id !== undefined);
-            assert.notStrictEqual(member1Id, member2Id);
+             const memberName = 'member-100-0';
+             assert.ok(compiler.memberTableMap.size === 1);
+             assert.equal(memberName,compiler.getRoleMemberNameById(0));
+            
         });
     });
 
@@ -653,18 +728,16 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
         test('calculateTotalStridersSchemaSlice should calculate striders', () => {
 
             resourceInstance.AddResourceInstance('COLLECTIONS', 'users_collection');
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_1');
+           
 
             const roleDefinition = {
                 'member_1': {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
-                        ownerInstance: ['doc_1'],
+                        action: "RO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
                         nested: null,
                         nestedInstance: null,
                         ttl: null
@@ -673,7 +746,8 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             };
 
             const compiler = new RoleCompiler('STRIDER_CALC_ROLE', roleDefinition);
-            compiler.parsedGroupRole();
+            compiler.groupRoleValidationSchema();
+            compiler.usedMemberMergedRoles();
             compiler.calculateTotalStridersSchemaSlice();
 
             assert.ok(compiler.striders.totalBytesSize > 0);
@@ -690,11 +764,9 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
-                        ownerInstance: ['doc_1'],
+                        action: "RO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
                         nested: null,
                         nestedInstance: null,
                         ttl: null
@@ -703,7 +775,8 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             };
 
             const compiler = new RoleCompiler('STRIDER_STRUCT_ROLE', roleDefinition);
-            compiler.parsedGroupRole();
+            compiler.groupRoleValidationSchema();
+            compiler.usedMemberMergedRoles();
             compiler.calculateTotalStridersSchemaSlice();
 
             const parentIndex = resourceInstance.getResourceInstanceIndex('COLLECTIONS', 'users_collection');
@@ -723,10 +796,9 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['*'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
+                       action: "RO",
+                        actionToOthers:'NONE',
+                      
                         ownerInstance: ['*'],
                         nested: null,
                         nestedInstance: null,
@@ -736,7 +808,8 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             };
 
             const compiler = new RoleCompiler('GLOBAL_STRIDER_ROLE', roleDefinition);
-            compiler.parsedGroupRole();
+            compiler.groupRoleValidationSchema();
+            compiler.usedMemberMergedRoles();
             compiler.calculateTotalStridersSchemaSlice();
 
             assert.ok(compiler.globalstriders[TYPE_IDS.COLLECTIONS]);
@@ -755,10 +828,8 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
                     'FIELD_METRICS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
+                         action: "RO",
+                        actionToOthers:'NONE',
                         ownerInstance: ['metric_1'],
                         nested: 'SEARCH_INDEXES',
                         nestedInstance: ['idx_1'],
@@ -768,8 +839,7 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             };
 
             const compiler = new RoleCompiler('NESTED_STRIDER_ROLE', roleDefinition);
-            compiler.parsedGroupRole();
-            compiler.calculateTotalStridersSchemaSlice();
+            compiler.compile()
 
             assert.ok(compiler.striders.totalBytesSize > 0);
             const parentIndex = resourceInstance.getResourceInstanceIndex('COLLECTIONS', 'users_collection');
@@ -788,18 +858,15 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
         test('compile should complete successfully for simple role', () => {
 
             resourceInstance.AddResourceInstance('COLLECTIONS', 'users_collection');
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_1');
-
+         
             const roleDefinition = {
                 'member_1': {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection'],
-                        action: ['READ', 'WRITE'],
-                        boundary: 'OWN',
-                        actionToOthers: ['READ'],
-                        boundaryToOthers: 'ALL',
-                        ownerInstance: ['doc_1'],
+                          action: "RO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
                         nested: null,
                         nestedInstance: null,
                         ttl: null
@@ -818,18 +885,16 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
 
         test('compile should throw error for invalid role', () => {
 
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_1');
+            
 
             const roleDefinition = {
                 'member_1': {
                     'DOCUMENTS': {
                         parentResource: 'INVALID_RESOURCE',
                         parentInstance: ['users_collection'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
-                        ownerInstance: ['doc_1'],
+                         action: "RO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
                         nested: null,
                         nestedInstance: null,
                         ttl: null
@@ -855,10 +920,8 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
                     'FIELD_METRICS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection'],
-                        action: ['READ', 'UPDATE'],
-                        boundary: 'OWN',
-                        actionToOthers: ['READ'],
-                        boundaryToOthers: 'ALL',
+                          action: "RUO",
+                        actionToOthers:'RA',
                         ownerInstance: ['metric_1'],
                         nested: 'SEARCH_INDEXES',
                         nestedInstance: ['idx_1'],
@@ -883,10 +946,8 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['*'],
-                        action: ['READ'],
-                        boundary: 'ALL',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
+                          action: "RO",
+                        actionToOthers:'NONE',
                         ownerInstance: ['*'],
                         nested: null,
                         nestedInstance: null,
@@ -905,17 +966,15 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
         test('compile should handle role with TTL', () => {
 
             resourceInstance.AddResourceInstance('COLLECTIONS', 'users_collection');
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_1');
+           
 
             const roleDefinition = {
                 'member_1': {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
+                         action: "RO",
+                        actionToOthers:'NONE',
                         ownerInstance: ['doc_1'],
                         nested: null,
                         nestedInstance: null,
@@ -930,22 +989,19 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             assert.ok(compiler.striders.totalBytesSize > 0);
         });
 
-        test('compile should handle duplicate Leaf for same parent instance', () => {
+        test('compile should handle merged duplicate Leaf for same parent instance into same member with same leaf ', () => {
 
             resourceInstance.AddResourceInstance('COLLECTIONS', 'users_collection');
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_1');
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_2');
+          
 
             const roleDefinition = {
                 'member_1': {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
-                        ownerInstance: ['doc_1'],
+                        action: "RO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
                         nested: null,
                         nestedInstance: null,
                         ttl: null
@@ -955,10 +1011,8 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection'],
-                        action: ['WRITE'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
+                          action: "WO",
+                        actionToOthers:'NONE',
                         ownerInstance: ['doc_2'],
                         nested: null,
                         nestedInstance: null,
@@ -970,7 +1024,7 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             const compiler = new RoleCompiler('COMPILE_MULTI_ROLE', roleDefinition);
             const cm=compiler.compile();
 
-            assert.equal(cm.code,SYSTEM_STATUS.DUPLICATE_INSTANCE);
+            assert.equal(compiler.memberTableMap.size,1);
            
 
             
@@ -986,18 +1040,16 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
         beforeEach(() => {
 
             resourceInstance.AddResourceInstance('COLLECTIONS', 'users_collection');
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_1');
+          
 
             const roleDefinition = {
                 'member_1': {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
-                        ownerInstance: ['doc_1'],
+                          action: "RO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
                         nested: null,
                         nestedInstance: null,
                         ttl: null
@@ -1075,18 +1127,16 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
         test('compile should be fast for simple role (< 100ms)', () => {
 
             resourceInstance.AddResourceInstance('COLLECTIONS', 'users_collection');
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_1');
+          
 
             const roleDefinition = {
                 'member_1': {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
-                        ownerInstance: ['doc_1'],
+                         action: "RO",
+                        actionToOthers:'NONE',
+                        ownerInstance: ['1'],
                         nested: null,
                         nestedInstance: null,
                         ttl: null
@@ -1108,7 +1158,7 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             // Create many instances
             for (let i = 0; i < 100; i++) {
                 resourceInstance.AddResourceInstance('COLLECTIONS', `coll_${i}`);
-                resourceInstance.AddResourceInstance('DOCUMENTS', `doc_${i}`);
+               
             }
 
             const parentInstances = Array.from({ length: 100 }, (_, i) => `coll_${i}`);
@@ -1119,10 +1169,8 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: parentInstances,
-                        action: ['READ', 'WRITE'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
+                           action: "RO",
+                        actionToOthers:'NONE',
                         ownerInstance: ownerInstances,
                         nested: null,
                         nestedInstance: null,
@@ -1160,17 +1208,14 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
         test('should handle role with all actions', () => {
 
             resourceInstance.AddResourceInstance('COLLECTIONS', 'users_collection');
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_1');
-
+           
             const roleDefinition = {
                 'member_1': {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection'],
-                        action: ['READ', 'WRITE', 'UPDATE', 'DELETE'],
-                        boundary: 'ALL',
-                        actionToOthers: ['READ', 'WRITE', 'UPDATE', 'DELETE'],
-                        boundaryToOthers: 'ALL',
+                         action: "RWUDA",
+                        actionToOthers:'RWUDA',
                         ownerInstance: ['doc_1'],
                         nested: null,
                         nestedInstance: null,
@@ -1189,17 +1234,15 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
 
             resourceInstance.AddResourceInstance('COLLECTIONS', 'users_collection');
             resourceInstance.AddResourceInstance('COLLECTIONS', 'products_collection');
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_1');
+            
 
             const roleDefinition = {
                 'member_1': {
                     'DOCUMENTS': {
                         parentResource: 'COLLECTIONS',
                         parentInstance: ['users_collection', 'products_collection'],
-                        action: ['READ'],
-                        boundary: 'OWN',
-                        actionToOthers: ['NONE'],
-                        boundaryToOthers: 'NONE',
+                          action: "RO",
+                        actionToOthers:'NONE',
                         ownerInstance: ['doc_1'],
                         nested: null,
                         nestedInstance: null,
@@ -1216,18 +1259,18 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             assert.ok(pTi.instance.size === 2);
         });
 
-        test('should handle empty role definition', () => {
+        test('should return error code for empty role definition when create fresh role', () => {
 
             
             const compiler = new RoleCompiler('EMPTY_ROLE', {});
-            const result = compiler.parsedGroupRoleValidation();
-            assert.strictEqual(result, true);
+            const result = compiler.groupRoleValidationSchema();
+            assert.strictEqual(result.code, SYSTEM_STATUS.VALIDATION_SCHEMA_FAILED);
         });
 
         test('should handle role with null leaf', () => {
 
             resourceInstance.AddResourceInstance('COLLECTIONS', 'users_collection');
-            resourceInstance.AddResourceInstance('DOCUMENTS', 'doc_1');
+         
 
             const roleDefinition = {
                 'member_1': {
@@ -1236,8 +1279,8 @@ describe('RoleCompiler - Integration Tests with Real GroupRole', () => {
             };
 
             const compiler = new RoleCompiler('NULL_LEAF_ROLE', roleDefinition);
-            const result = compiler.parsedGroupRole();
-            assert.strictEqual(result, true);
+            const result = compiler.groupRoleValidationSchema();
+            assert.strictEqual(result.code, SYSTEM_STATUS.VALIDATION_SCHEMA_FAILED);
         });
     });
 });
