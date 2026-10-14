@@ -58,7 +58,7 @@ export class RoleBaseBuckets {
      */
     static registerNewRole(GroupRoleName, RoleClass) {
         const GroupPid = resourceInstance.getRoleId(GroupRoleName);
-        if (!GroupPid || this.bucket.has(GroupPid)) return {code:SYSTEM_STATUS.ROLE_EXISTS,message:`RoleBucketError: Same Group Role Pid are registered in this Buckets`};
+        if (!GroupPid || GroupPid?.code !== undefined || this.bucket.has(GroupPid)) return {code:SYSTEM_STATUS.ROLE_EXISTS,message:`RoleBucketError: ${GroupPid?.code ? GroupPid.message : "Same Group Role Pid are registered in this Buckets"}`};
 
         this.bucket.set(GroupPid, RoleClass);
        
@@ -243,7 +243,7 @@ static replaceRoleDefinition(groupRoleName, newDefinition, options = {}) {
         const compileResult = newCompiler.compile();
         
         if (compileResult !== true) {
-            return { code: SYSTEM_STATUS.RECOMPILE_FAILED, message: `RoleBucketError:  Compilation failed: resource Code:${compileResult.code}-${compileResult.message}` };
+            return { code: SYSTEM_STATUS.RECOMPILE_FAILED, message: `RoleBucketError:  Compilation failed: resource Code:${compileResult?.code}-${compileResult?.message}` };
         }
 
         const newWorker = new RoleBinaryWorker(groupRoleName, newCompiler);
@@ -490,8 +490,8 @@ static async flushExpiredBucketAsync() {
      */
     static updateExistedInstanceRole(GroupRoleName, preCompiledWorkerInstance) {
         const GroupPid = resourceInstance.getRoleId(GroupRoleName);
-        if (!GroupPid) {
-            return { code:SYSTEM_STATUS.INVALID_ROLE_ID, message: `RoleBucketError:  Update Error: Invalid GroupRoleName ${GroupRoleName}` };
+        if ( GroupPid?.code !== undefined) {
+            return { code:SYSTEM_STATUS.INVALID_ROLE_ID, message: `RoleBucketError:  Update Error: ${GroupPid.message}` };
         }
 
         if (!this.insBucket.has(GroupPid)) {
