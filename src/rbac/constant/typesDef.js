@@ -1,4 +1,4 @@
-import { TYPE_IDS , TYPE_IDS_NAME, DEFAULT_ACTIONS,BOUNDARY} from "./resourceType.js";
+import { TYPE_IDS , TYPE_IDS_NAME, DEFAULT_ACTIONS,BOUNDARY, EFFECT_ACTION} from "./resourceType.js";
 
 /**
  *
