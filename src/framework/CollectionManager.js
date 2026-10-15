@@ -19,7 +19,7 @@ export class CollectionManager{
  * if collection with same name exist in dbserver return its return CollectionObject without any new creation \
  * if not exist collection with same name  in dbserver its create new one and retrun its CollectionObject
  * in both it put CollectionObject in Cache
- * if its faild => error 
+ * if its Failed => error 
  * @param {String} collectionName -- new collection name 
  * @param {Schema} SchemaValidatorObject -- Schema Object
  * @param {boolean} update -- if update = true then it allow to update exist collection with same name 
@@ -120,7 +120,7 @@ export class CollectionManager{
                 validator: compileValidator.validator
             });
 
-            console.log(`⚡ Collection '${collectionName}' native validators updated via collMod.`);
+            console.log(` Collection '${collectionName}' native validators updated via collMod.`);
             }
 
         for (const userIndex of schemaBuilder.getIndex()) {
@@ -145,7 +145,7 @@ export class CollectionManager{
             record(DOMAIN.ODM_DOMAIN, EVENT_TYPES.DB_QUERY_END, EVENT_MTYPES.METRIC_H, durationNs);
             auditLog(DOMAIN.ODM_DOMAIN, 'collection_update_failed', { actor: 'system' }, { collection: collectionName }, 'failure', { error: error.message });
 
-            console.error(`❌ Something went wrong when creating collection: ${collectionName}`, error);
+            console.error(`Something went wrong when creating collection: ${collectionName}`, error);
             throw error; 
 
 
@@ -250,8 +250,8 @@ export class CollectionManager{
                 } 
             } catch (error) {
 
-                console.error("Error: Fetching Collection From Database Faild");
-                throw error;
+                console.error(`CollectionManagerError: Fetching Collection From Database Failed ${error.message}`);
+                return null;
 
             }
         
@@ -274,7 +274,7 @@ async getAllCollection(){
                  record(DOMAIN.ODM_DOMAIN, EVENT_TYPES.DB_QUERY_END, EVENT_MTYPES.METRIC_H, durationNs);
                  auditLog(DOMAIN.ODM_DOMAIN, 'collection_list_failed', { actor: 'system' }, {}, 'failure', { error: error.message });
 
-                console.error(`Error: Fetching Collection From Database Faild: ${error.message} `);
+                console.error(`Error: Fetching Collection From Database Failed: ${error.message} `);
                 return null;
 
             };
@@ -326,11 +326,11 @@ async syncAllCollectionOnBoot(registerInstanc){
             await collectionObject.createIndex(key, option);
         }
         this.cache[schemaName]=collectionObject
-       rbacManager.registerResource("COLLECTIONS",[schemaName]);
+     
          const durationNs = (performance.now() - startTime) * 1000000;
         record(DOMAIN.ODM_DOMAIN, EVENT_TYPES.DB_TRANSACTION_COMMIT, EVENT_MTYPES.METRIC_H, durationNs); 
     }
-
+  rbacManager.registerResource("COLLECTIONS",[...applicationSchemaRegistry.getAllSchemaNames()]);
 }
 }
 
