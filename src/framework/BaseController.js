@@ -6,7 +6,7 @@ import { frameworkConfig } from '../config/frameworkConfig.js';
 
 
 /**
- * I update this to be accept to catch cellection name from reqest url
+ * I update this to be accept to catch collection name from reqest url
  * so the collection can dynamicly geting and used better for concurrency
  * or 
  * u can add collection to it manually better for one collection at a time "for debug or testing"
@@ -72,6 +72,11 @@ export class BaseController{
 
    
     const queryFilterd= {};
+    
+    if (req.rbacScope === 'OWN' && req.rbacOwnerId) {
+        queryFilterd._id = new ObjectId(req.rbacOwnerId); // Force filter to user's own ID
+    }
+    
 
         if(frameworkConfig.schemaDefaults.softDocumentDelete){
             queryFilterd.deletedAt={$exists: false};
@@ -92,10 +97,10 @@ findById = catchAsync(async (req,res,next) => {
    
     const collection=this.getCollNameFromReq(req);
     
-    if(!ObjectId.isValid(req.params.id)){
+    if(!ObjectId.isValid(req.params._id)){
         return next(new AppError("input must be a 24 character hex string, 12 byte Uint8Array, or an integer",400));
     }
-    const queryFilterd= {_id: new ObjectId(req.params.id)};
+    const queryFilterd= {_id: new ObjectId(req.params._id)};
 
         if(frameworkConfig.schemaDefaults.softDocumentDelete){
             queryFilterd.deletedAt={$exists: false};
@@ -115,7 +120,7 @@ remove = catchAsync( async (req,res,next)=>{
 
      const collection= this.getCollNameFromReq(req);
 
-      if(!ObjectId.isValid(req.params.id)){
+      if(!ObjectId.isValid(req.params._id)){
         return next(new AppError("input must be a 24 character hex string, 12 byte Uint8Array, or an integer",400));
     }
     const setOperation={}
@@ -131,14 +136,14 @@ remove = catchAsync( async (req,res,next)=>{
 
         result= await collection.updateOne(
             {
-                _id: new ObjectId(req.params.id),
+                _id: new ObjectId(req.params._id),
                 deletedAt:{$exists : false}},
             setOperation
         )
 
     }else{
 
-         result= await collection.deleteOne({_id: new ObjectId(req.params.id)});
+         result= await collection.deleteOne({_id: new ObjectId(req.params._id)});
 
     }
     
@@ -156,7 +161,7 @@ update = catchAsync( async (req, res,next) => {
             const collection = this.getCollNameFromReq(req);
 
          
-            const targetId = req.params.id;
+            const targetId = req.params._id;
                if(!ObjectId.isValid(targetId)){
         return next(new AppError("input must be a 24 character hex string, 12 byte Uint8Array, or an integer",400));
     }
@@ -172,7 +177,7 @@ update = catchAsync( async (req, res,next) => {
             const updateOperation={
                    $set:  req.body 
             }
-               
+              
             if(frameworkConfig.schemaDefaults.optimisticConcurrencyControl){
                 updateOperation.$inc={
                     version: 1}
