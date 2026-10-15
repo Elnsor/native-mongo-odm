@@ -29,6 +29,8 @@ import { Schema } from "./Schema.js";
  * @property {boolean} hasNestedChildren -- i type of field is object and its property are define as feild inside collection 
  * so if this set to true means this field name is object and has property define another field inside collection e.g (accountInf.email ,publicInfo.firstName )
  *  the accountInfo and publicinfo are parent so its hasNestedChildren set to true 
+ * @property {boolean} isSet - if any of this (config.immutable || config.managedBySystem ||  config.restrictedRoles ||  config.strictImmutable) is set \
+ * then the value is true else its false , this value used for trigger check app role if its true 
  * 
  */
 
@@ -58,7 +60,8 @@ export class SchemaBuilder extends Schema {
         managedBySystem: config.managedBySystem || false,
         restrictedRoles: config.restrictedRoles || false,
         nullable: config.nullable !== undefined ? config.nullable : false,
-        hasNestedChildren:config.hasNestedChildren  !== undefined? config.hasNestedChildren:false
+        hasNestedChildren:config.hasNestedChildren  !== undefined? config.hasNestedChildren:false,
+        isSet:( config.immutable || config.managedBySystem ||  config.restrictedRoles ||  config.strictImmutable) ? true :false ,
     };
     return appRoles;
 
@@ -310,7 +313,7 @@ deletedAtTimestamps() {
             "deletedAt",
             { 
                 bsonType: 'date',
-                description: "Timestamp recording initial record instantiation"
+                description: "Timestamp recording for Delete record used with SoftDeletion"
              },
             systemTimeConfig
         );
