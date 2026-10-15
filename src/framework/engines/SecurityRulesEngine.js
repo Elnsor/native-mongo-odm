@@ -91,7 +91,7 @@ class SecurityRulesEngine {
             const appRoles = fieldDefinition.appRoles;
    
             // Skip container objects; evaluate leaf properties directly
-            if (fieldDefinition.mongoRoles?.bsonType === 'object') {
+            if ( !appRoles.isSet || fieldDefinition.mongoRoles?.bsonType === 'object') {
                 continue;
             }
 
@@ -148,9 +148,10 @@ class SecurityRulesEngine {
             if (appRoles.managedBySystem) {
 
                 if (!appRoles.managedBySystem.type) continue;
-                if (isUpdate && appRoles.immutable && oldValue !== undefined) continue;
+                if (isUpdate && ((appRoles.immutable && oldValue !== undefined) || ( newValue === undefined && fieldName !== 'updatedAt') )) continue;
 
                 const appRoleType = appRoles.managedBySystem.type;
+               
      
                 if (this.core[appRoleType]) {
                    
@@ -188,8 +189,6 @@ class SecurityRulesEngine {
             const { fieldName, strategy, options } = customCoreFunction[j];
             try {
                 const generatedValue = strategy(sanitizeDoc, options.params);
-                console.log(sanitizeDoc[fieldName])
-                if(isUpdate && sanitizeDoc?.[fieldName] === undefined) continue;
                 this._setNestedValue(sanitizeDoc, fieldName, generatedValue);
             } catch (err) {
                 throw new AppError(`Runtime Execution Failure inside custom type system handler '${options.type}': ${err.message}`, 500);
