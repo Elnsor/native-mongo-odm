@@ -411,25 +411,6 @@ Part of Framework Core - Internal Use Only
 
 ---
 
-
-## 🎨 Alternative Commit Message (Conventional Commits)
-
-```bash
-feat(persistence): implement universal atomic persistence layer
-
-Add BasePersistence class providing:
-- Atomic MongoDB transactions with retry logic
-- Optimistic Concurrency Control (OCC)
-- Soft delete with audit trail
-- Event sourcing for change tracking
-- Schema validation integration
-- Domain-agnostic CRUD operations
-
-Enables consistent, safe database operations across all collections.
-```
-
----
-
 ## 📊 Summary Diagram
 
 ```mermaid
