@@ -140,9 +140,7 @@ export function defineAccountAndPublicInfoSchema() {
        
     return builder;
 }
-/*register your schemabuidler instance class */
-dbAppIns.registerSchema("users",defineAccountAndPublicInfoSchema());
-//registerNewCollection("users",defineAccountAndPublicInfoSchema());
+
 
 function mergeNames(doc) {
   if (!doc) return "";
@@ -162,9 +160,16 @@ function mergeNames(doc) {
     .join(" ");
 }
 
+function initMod1()
+{
+    /*register your schemabuidler instance class */
+dbAppIns.registerSchema("users",defineAccountAndPublicInfoSchema());
+
 /** register you custom managed by system  */
 dbAppIns.registerCustomManagedBySystem("formatDisplayName",mergeNames)
-//addNewCustomManagedBysystem( "formatDisplayName",mergeNames)
+
+}
+dbAppIns.registerHandlerBefore(initMod1);
 
 
 
