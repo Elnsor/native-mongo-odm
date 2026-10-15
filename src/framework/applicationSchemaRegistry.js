@@ -52,6 +52,9 @@ class ApplicationSchemaRegistry{
     getAllSchema(){
         return this.registry.entries();
     }
+    getAllSchemaNames(){
+        return this.registry.keys();
+    }
 unregister(collecionName){
 
     this.registry.delete(collecionName);

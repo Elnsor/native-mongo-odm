@@ -20,7 +20,7 @@ const validationCollection= catchAsync(async (req,res,next)=>{
 
     if(isUpdate){
 
-        let id = req.params.id || req.body._id
+        let id = req.params._id || req.body._id
         if(!id){
             throw new AppError("Bad Request: Missing document identifier required for updates.", 400);
             
