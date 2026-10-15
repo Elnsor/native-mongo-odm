@@ -1,4 +1,5 @@
-import { SchemaBuilder } from "../../framework/SchemaBuilder.js";
+import { SchemaBuilder } from "../framework/SchemaBuilder.js";
+import { dbAppIns } from "../dpApp.js";
 
 /**
  * Defines the schema for storing RBAC roles in MongoDB.
@@ -72,3 +73,14 @@ export function defineRbacEventSchema() {
 
     return builder;
 }
+
+// Register RBAC Schemas with the Framework
+
+function initMod(){
+dbAppIns.registerSchema("rbac_roles", defineRbacRoleSchema());
+dbAppIns.registerSchema("rbac_role_events", defineRbacEventSchema());
+}
+
+dbAppIns.registerHandlerBefore(initMod);
+
+console.log("✅ RBAC Schemas registered successfully");
