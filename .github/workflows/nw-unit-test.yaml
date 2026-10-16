@@ -44,14 +44,17 @@ jobs:
             - { name: "AuditLogger  Core System", file: "auditLogger.native.test.js", report: "auditLogger-report.xml" }
 
             - { name: "RBAC Authorization Check ", file: "authorization.native.test.js", report: "rbac-authorization-report.xml" }
-            - { name: "RBAC Resource Role Group Manager ", file: "base-manager.native.test.js", report: "rbac-base-manager-report.xml" }
+            - { name: "RBAC Resource Role Group Manager ", file: "rbac-base-manager.native.test.js", report: "rbac-base-manager-report.xml" }
+            - { name: "RBAC Compile Merged Phase", file: "rbac-merged-role.native.test.js", report: "rbac-role-compile-merged-report.xml" }
             - { name: "RBAC Role Compile ", file: "roleCompiler.native.test.js", report: "rbac-role-compile-report.xml" }
-            - { name: "RBAC Buckets ", file: "buckets.native.test.js", report: "rbac-buckets-report.xml" }
-            - { name: "RBAC Resource System Resource Instances ", file: "systemReourcesInstances.native.test.js", report: "rbac-system-resources-instances-report.xml" }
-            - { name: "RBAC Role Binary Allocator ", file: "base-buffer.native.test.js", report: "rbac-role-binary-allocator-report.xml" }
-            - { name: "RBAC Role Binary worker ", file: "binary-worker.nattive.test.js", report: "rbac-role-binary-worker-report.xml" }
-            - { name: "RBAC Managerr ", file: "rbacManager.native.test.js", report: "rbac-manager-report.xml" }
-            - { name: "RBAC Build GroupRole", file: "buildGroupRole.native.test.js", report: "rbac-build-group-role-report.xml" }
+            - { name: "RBAC Buckets ", file: "rbac-buckets.native.test.js", report: "rbac-buckets-report.xml" }
+            - { name: "RBAC Buckets TTL Expiration Role", file: "rbac-ttl-roleExpiration.native.test.js", report: "rbac-buckets-ttl-expiration-report.xml" }
+            - { name: "RBAC Resource System Resource Instances ", file: "rbac-systemReourcesInstances.native.test.js", report: "rbac-system-resources-instances-report.xml" }
+            - { name: "RBAC Role Binary Allocator ", file: "rbac-base-buffer.native.test.js", report: "rbac-role-binary-allocator-report.xml" }
+            - { name: "RBAC Role Binary worker ", file: "rbac-binary-worker.nattive.test.js", report: "rbac-role-binary-worker-report.xml" }
+            - { name: "RBAC Managerr ", file: "rbac-rbacManager.native.test.js", report: "rbac-manager-report.xml" }
+            - { name: "RBAC Build GroupRole", file: "rbac-buildGroupRole.native.test.js", report: "rbac-build-group-role-report.xml" }
+            - { name: "RBAC Role File Repository", file: "rbac-RoleFileRepository.native.test.js", report: "rbac-role-file-repository-report.xml" }
             
 
             
