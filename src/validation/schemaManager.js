@@ -597,7 +597,6 @@ async validateDocument(collectionName, doc, skipRequired = { "_id": true, "creat
                  throw new AppError(`Security Exception: Direct modification of undefined structural fields [${docKey}] is blocked.`, 400)
             }
         }
-        console.log("+++++++++",newdoc);
 
        
         // 2. PROCESSING LOOP: O(M) with ZERO pre-calculation overhead
