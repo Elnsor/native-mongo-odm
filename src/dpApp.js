@@ -5,6 +5,9 @@ import { securityRulesEngine } from "./framework/engines/SecurityRulesEngine.js"
 import { Projection } from "./framework/engines/projectionEngine.js";
 import { AppError } from "./framework/appError.js";
 import { frameworkConfig } from "./config/frameworkConfig.js";
+import { initializeMonitoring } from "./Monitor/monitoringSystem.js";
+import { loadDirectory } from "./utils/dynamicImport.js";
+
 
 /**
  * dbApp  user interface app for manageing db 
@@ -14,9 +17,11 @@ class dbApp {
     #isInitialized = false;
     #isStarted = false;
     #config = {};
+    #handlerBefore=new Set()
+    #handlerAfter=new Set()
 
     /**
-     * Constructor خاص - يمنع إنشاء instances متعددة
+     * Constructor singlton 
      */
     constructor() {
         if (dbApp.#instance) {
@@ -26,7 +31,7 @@ class dbApp {
     }
 
     /**
-     * الحصول على الـ instance الوحيد
+     * get singelton instance 
      * @returns {dbApp}
      */
     static getInstance() {
@@ -37,11 +42,16 @@ class dbApp {
     }
 
     /**
-     * تهيئة التطبيق بالإعدادات
-     * @param {frameworkConfig} config - إعدادات التطبيق
+     * reinitialize framework configuration
+     * @param {frameworkConfig} config - framework configuratoin
      * @returns {dbApp}
      */
-    configure(config = frameworkConfig) {
+    configure(config = {frameworkConfig,monitoring:{ enabled: true,
+            auditEnabled: true,
+            maxBufferSize: 1000,
+            flushIntervalMs: 5000,
+            logFilePath: './audit.jsonl'}}
+        ) {
         if (this.#isStarted) {
             throw new AppError("Cannot configure app after it has started", 500);
         }
@@ -54,7 +64,7 @@ class dbApp {
         };
 
         this.#isInitialized = true;
-        console.log("✅ App configured successfully");
+        console.log(" App configured successfully");
         return this;
     }
 
@@ -75,7 +85,16 @@ class dbApp {
         }
 
         try {
-            console.log("🚀 Starting Monolith App...");
+            console.log("Starting Monolith App...");
+
+            if(this.#config.monitoring.enabled){
+                initializeMonitoring(this.#config.monitoring);
+                
+
+            }
+            await loadDirectory('./src/modules');
+
+            this.installHandlerBefore();
 
             // connection to db
             await connectDb();
@@ -84,6 +103,7 @@ class dbApp {
             // sync collection
             await collectionManager.syncAllCollectionOnBoot(applicationSchemaRegistry);
             console.log("✅ Collections synced");
+            this.installHandlerAfter();
 
            
             if (this.#config.cache?.warmUpOnStartup) {
@@ -173,10 +193,44 @@ class dbApp {
     }
 
     /**
-     * for advanced usage get collection object by name for collection cache
-     * @param {string} collectionName - اسم الـ collection
+     *
+     * @param {string} collectionName - 
      * @returns {Collection|null}
      */
+    registerHandlerAfter(func){
+        if (typeof func !== 'function'){
+
+               throw new AppError("dpApp ERR: Type need to be Function", 500);
+
+        }
+
+        this.#handlerAfter.add(func);
+    }
+
+    installHandlerAfter(){
+        const handlers=[...this.#handlerAfter]
+        for(let func of handlers){
+            func();
+        }
+    }
+
+    registerHandlerBefore(func){
+        if (typeof func !== 'function'){
+
+               throw new AppError("dpApp ERR: Type need to be Function", 500);
+
+        }
+
+        this.#handlerBefore.add(func);
+    }
+
+    installHandlerBefore(){
+        const handlers=[...this.#handlerBefore]
+        for(let func of handlers){
+            func();
+        }
+    }
+
     getCollection(collectionName) {
         if (!this.#isStarted) {
             throw new AppError("App must be started before accessing collections", 500);
@@ -216,6 +270,9 @@ class dbApp {
             throw new AppError("App must be started before accessing database", 500);
         }
         return getDb();
+    }
+    get Config(){
+        return this.#config
     }
 }
 
