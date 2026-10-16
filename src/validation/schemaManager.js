@@ -406,11 +406,17 @@ _getNestedValue(obj, path) {
  * Sets a value on a target object using a dot-notation path, creating parent objects if missing
  * e.g., _setNestedValue(sanitizerDoc, "accountInfo.email", "john@example.com")
  */
-_setNestedValue(obj, path, value) {
+_setNestedValue(obj, path, value,isUpdate) {
+    if(isUpdate) {
+        obj[path] = value;
+        return;
+    }
+    
     if (!path.includes('.')) {
         obj[path] = value;
         return;
     }
+    
 
     const keys = path.split('.');
     let current = obj;
@@ -591,6 +597,7 @@ async validateDocument(collectionName, doc, skipRequired = { "_id": true, "creat
                  throw new AppError(`Security Exception: Direct modification of undefined structural fields [${docKey}] is blocked.`, 400)
             }
         }
+        console.log("+++++++++",newdoc);
 
        
         // 2. PROCESSING LOOP: O(M) with ZERO pre-calculation overhead
@@ -627,7 +634,7 @@ async validateDocument(collectionName, doc, skipRequired = { "_id": true, "creat
             const validatedValue = this._proccessAndValidateValue(collectionName, fieldName, fieldValue,fieldDefinition);
 
             //  Write back to sanitized document (Guarantees perfect nested structure)
-            this._setNestedValue(sanitizerDoc, fieldName, validatedValue);
+            this._setNestedValue(sanitizerDoc, fieldName, validatedValue,isUpdate);
         }
 
         if(docSet.size > 0){
