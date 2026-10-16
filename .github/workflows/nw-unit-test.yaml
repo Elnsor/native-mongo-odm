@@ -43,10 +43,10 @@ jobs:
             - { name: "Montioring System ", file: "monitoringSystem.native.test.js", report: "monitoring-system.xml" }
             - { name: "AuditLogger  Core System", file: "auditLogger.native.test.js", report: "auditLogger-report.xml" }
 
-            - { name: "RBAC Authorization Check ", file: "authorization.native.test.js", report: "rbac-authorization-report.xml" }
+            - { name: "RBAC Authorization Check ", file: "rbac-Autherization.native.test.js", report: "rbac-authorization-report.xml" }
             - { name: "RBAC Resource Role Group Manager ", file: "rbac-base-manager.native.test.js", report: "rbac-base-manager-report.xml" }
             - { name: "RBAC Compile Merged Phase", file: "rbac-merged-role.native.test.js", report: "rbac-role-compile-merged-report.xml" }
-            - { name: "RBAC Role Compile ", file: "roleCompiler.native.test.js", report: "rbac-role-compile-report.xml" }
+            - { name: "RBAC Role Compile ", file: "rbac-RoleCompiler.native.test.js", report: "rbac-role-compile-report.xml" }
             - { name: "RBAC Buckets ", file: "rbac-buckets.native.test.js", report: "rbac-buckets-report.xml" }
             - { name: "RBAC Buckets TTL Expiration Role", file: "rbac-ttl-roleExpiration.native.test.js", report: "rbac-buckets-ttl-expiration-report.xml" }
             - { name: "RBAC Resource System Resource Instances ", file: "rbac-systemReourcesInstances.native.test.js", report: "rbac-system-resources-instances-report.xml" }
