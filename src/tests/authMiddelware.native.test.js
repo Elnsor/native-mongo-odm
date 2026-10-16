@@ -52,7 +52,8 @@ describe("Unit Test: tokenauth Middleware Security Layer", () => {
 
         
         req = {
-            headers: { authorization: `Bearer ${token}` }
+            headers: { authorization: `Bearer ${token}` },
+            ip:'1.1.1.1'
         };
         res = {};
         next = mock.fn();

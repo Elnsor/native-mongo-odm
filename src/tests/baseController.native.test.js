@@ -39,7 +39,7 @@ describe("", () => {
             body: { username: 'elkas' },
             params: {
                 collectionName: 'users',
-                id: new ObjectId().toString()
+                _id: new ObjectId().toString()
             },
             currentDoc: { version: 1 }
         };
@@ -101,9 +101,10 @@ describe("", () => {
     describe("gevin: findById() : to insert Doc", () => {
 
         test("should parse hex lookup and return the matched document with HTTP status Code 200", async () => {
+           
             await controller.findById(req, res, next);
             assert.equal(collectionObject.findOne.mock.calls.length, 1);
-            assert.deepEqual(collectionObject.findOne.mock.calls[0].arguments[0], { _id: new ObjectId(req.params.id) });
+            assert.deepEqual(collectionObject.findOne.mock.calls[0].arguments[0], { _id: new ObjectId(req.params._id) });
             assert.equal(res.status.mock.calls[0].arguments[0], 200);
         })
     }); // end describe 
@@ -150,7 +151,7 @@ describe("", () => {
     describe("Edge Case: findById() with malformed hex string", () => {
         test("should catch ObjectId parsing errors and forward via next()", async () => {
 
-            req.params.id = "broken-id-123";
+            req.params._id = "broken-id-123";
 
             await controller.findById(req, res, next);
 
@@ -176,7 +177,7 @@ describe("", () => {
             assert.equal(error.statusCode, 404);
         });
         test("should return 400 if the provided update ID is invalid", async () => {
-            req.params.id = "bad-id-123";
+            req.params._id = "bad-id-123";
 
             await controller.update(req, res, next);
 
@@ -201,7 +202,7 @@ describe("", () => {
             assert.equal(error.statusCode, 404);
         });
         test("should return 400 if the provided delete ID is invalid", async () => {
-            req.params.id = "invalid-id-xyz";
+            req.params._id = "invalid-id-xyz";
 
             await controller.remove(req, res, next);
 

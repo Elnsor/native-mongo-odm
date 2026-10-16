@@ -300,8 +300,8 @@ describe('SchemaValidationMananger (schemaManager)', () => {
       // isUpdate = true
       const sanitized = await schemaManager.validateDocument('update_users', payload, {}, true);
       
-      assert.strictEqual(sanitized.accountInfo.age, 31);
-      assert.strictEqual(sanitized.accountInfo.email, undefined); // Correctly omitted
+      assert.strictEqual(sanitized['accountInfo.age'], 31);
+      assert.strictEqual(sanitized['accountInfo.email'], undefined); // Correctly omitted
     });
 
     test('should allow ANY nested fields in a "Black-Box" object (no hasNestedChildren)', async () => {

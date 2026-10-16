@@ -88,7 +88,7 @@ describe ("TEST userSerivce",()=>{
             await assert.rejects(
                 async()=> await userService.init(),
                 (err)=>{
-                    // console.log("+++++++",err);
+                  
                     assert.ok(err instanceof AppError);
                     assert.strictEqual(err.statusCode,500)
                     assert.strictEqual(err.message,"System Error: Users collection not available in cache")

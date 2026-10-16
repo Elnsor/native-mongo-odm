@@ -1,24 +1,17 @@
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert";
-import {MongoMemoryServer} from 'mongodb'
 import { connectDb, getDb, closeDb } from "../config/db.js"; 
-
 describe("MongoDB Connection Integration Tests", () => {
   let mongoServer;
 
   before(async () => {
 
-    mongoServer = await MongoMemoryServer.create();
-    const uri = mongoServer.getUri();
-
-    
-    process.env.MONGODB_URI = uri;
   });
 
   after(async () => {
 
     await closeDb();
-    await mongoServer.stop();
+
   });
 
   test("Should establish a real connection to MongoDB memory server", async () => {

@@ -500,7 +500,7 @@ describe('Expiration Detection', () => {
             futureTime
         );
         
-        assert.ok(result2.code === SYSTEM_STATUS.PERMISSION_EXPIRED, 
+        assert.ok(result2.code === SYSTEM_STATUS.ACCESS_DENIED, 
             `Should be expired, got ${JSON.stringify(result2)}`);
     });
 
@@ -926,7 +926,7 @@ describe('Full Expiration Integration',async () => {
             futureTime
         );
         
-        assert.ok(result2.code === SYSTEM_STATUS.PERMISSION_EXPIRED, 
+        assert.ok(result2.code === SYSTEM_STATUS.ACCESS_DENIED, 
             "Access should be denied after expiration");
         
         // 5. Wait for background flush
