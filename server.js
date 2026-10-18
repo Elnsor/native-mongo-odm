@@ -1,22 +1,61 @@
 import dotenv from "dotenv"
 import { dbAppIns } from "./src/dpApp.js";
 import app from './app.js'
-
+import http from 'http'
 dotenv.config();
-const PORT=3000
-async function bootstrap(){
 
-    dbAppIns.configure();
-    await dbAppIns.start();
-    app.listen(PORT,()=>{
-        console.log(`🌐 Production Modular Server operational on http://localhost:${PORT}`);
-        
-    });
+// validate missing important env
+const REQUIRED_INV_VARS= ['MONGODB_URI', 'SECRET_KEY'];
+const missingVar=REQUIRED_INV_VARS.filter( key => !process.env[key]);
+const NODE_ENV = process.env.NODE_ENV || 'development'
 
-   
+let isShutDown=false;
+let server;
+
+if (missingVar.length > 0) {
+    console.error(`❌ FATAL: Missing required environment variables: ${missingVar.join(', ')}`);
+    process.exit(1); // Stop immediately before trying to connect to DB
 }
 
+const PORT=parseInt(process.env.PORT,10) || 3000;
+async function bootstrap() {
+    const bootStart = performance.now();
+
+    try {
+        // 1. Configure and start your custom DB/Framework layer
+        dbAppIns.configure();
+        await dbAppIns.start();
+
+        // 2. Create HTTP server (Separating http from Express allows clean connection draining)
+        server = http.createServer(app);
+
+        // 3. Start listening
+        server.listen(PORT, () => {
+            const bootDuration = (performance.now() - bootStart).toFixed(2);
+            console.log(`\n Server running on port ${PORT} [${NODE_ENV}]`);
+            console.log(` Booted in ${bootDuration}ms\n`);
+        });
+
+    } catch (error) {
+        console.error('❌ FATAL: Boot sequence failed:', error.message);
+        console.error(error.stack);
+        process.exit(1);
+    }
+}
+
+
 async function gracefulShutdown(){
+    if(isShutDown) return;
+    isShutDown=true;
+
+    if(server){
+        server.close( ()=> console.log(`HTTP server closed` ));
+        const forceExistDbTimer=setTimeout(()=>{
+            console.log("Force shutdown after 10s")
+        },10000)
+        forceExistDbTimer.unref()
+
+    }
    
     
     try {
@@ -32,26 +71,31 @@ async function gracefulShutdown(){
         process.exit(0); // 0 means clean exit without errors
          
 }
+function handleUncaughtException(err) {
+    console.error('\n UNCAUGHT EXCEPTION!');
+    console.error('   Name:', err.name);
+    console.error('   Message:', err.message);
+    console.error('   Stack:', err.stack);
+    gracefulShutdown('uncaughtException');
+}
+    function handleUnhandledRejection(reason, promise) {
+    console.error('\n UNHANDLED REJECTION!');
+    console.error('   Reason:', reason);
+    gracefulShutdown('unhandledRejection');
+}
+
+
+
+// Attach listeners
+process.on('SIGINT', gracefulShutdown);   // Ctrl+C
+process.on('SIGTERM', gracefulShutdown);  // Docker/Kubernetes stop signal
+process.on('uncaughtException', handleUncaughtException);
+process.on('unhandledRejection', handleUnhandledRejection);
 
 bootstrap();
-process.on('uncaughtException', (err) => {
-    console.error('💥 UNCAUGHT EXCEPTION! Shutting down gracefully...');
-    console.error(err.name, ':', err.message, '\n', err.stack);
-    
-    // Force exit immediately because the node process is now in an unstable state
-    process.exit(1);
-});
 
-// Unhandeled Rejection come For Unhandled (Async Promise Failure)
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('💥 UNHANDLED REJECTION! Shutting down gracefully...');
-    console.error('Reason:', reason);
-        process.exit(1);
-});
 
-process.on('SIGINT',gracefulShutdown);
 
-process.on('SIGTERM',gracefulShutdown);
 
 
 
