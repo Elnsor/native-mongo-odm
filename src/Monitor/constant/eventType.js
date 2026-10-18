@@ -4,16 +4,23 @@
  * @typedef {keyof typeof EVENT_TYPES} EventType 
  */
 export const EVENT_TYPES = {
+
+    
     // ==========================================
-    // RBAC Domain Events (1 - 99)
+    // System  (1 - 9)
+    // ==========================================
+
+    SYSTEM_ERROR:1,
+    // ==========================================
+    // RBAC Domain Events (10 - 99)
     // ==========================================
     
-    // 1. Access & Authorization (1-19)
-    RBAC_AUTH_CHECK: 1,           
-    RBAC_AUTH_DENIED: 2,          
-    RBAC_AUTH_EXPIRED: 3,         
-    RBAC_AUTH_GRANTED: 4,         
-    RBAC_AUTH_WILDCARD: 5,        
+    // 1. Access & Authorization (10-19)
+    RBAC_AUTH_CHECK: 10,           
+    RBAC_AUTH_DENIED: 11,          
+    RBAC_AUTH_EXPIRED: 12,         
+    RBAC_AUTH_GRANTED: 13,         
+    RBAC_AUTH_WILDCARD: 14,        
     
     // 2. Compilation & Validation (20-39)
     RBAC_COMPILE_START: 20,       
@@ -87,7 +94,15 @@ export const EVENT_TYPES = {
     DB_QUERY_END: 181,                
     DB_TRANSACTION_START: 182,        
     DB_TRANSACTION_COMMIT: 183,       
-    DB_TRANSACTION_ABORT: 184 
+    DB_TRANSACTION_ABORT: 184 ,
+// ==========================================
+    // Trafic And HTTP : Requests 200 - 299
+    // ==========================================
+    HTTP_REQUEST_RECIVES:200,
+    HTTP_REQUEST_START : 202,
+    HTTP_REQUEST_END : 202,
+    
+    HTTP_RESPONSE:210
 };
 
 export const EVENT_MTYPES={
