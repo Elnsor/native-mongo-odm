@@ -40,7 +40,7 @@ export const authorizeCheck = (action, options = {}) => {
                 return next(new AppError("Access Denied: User is not authenticated or role is missing", 401));
             }
           
-            const userRolePid = resourceInstance.getRoleId(user.accountInfo.roleName);
+            const userRolePid =user.roleId ?? resourceInstance.getRoleId(user.accountInfo.roleName);
          
             if (userRolePid?.code !== undefined  ) {
                 return next(new AppError(`Access Denied: ${userRolePid.message}`, 403));

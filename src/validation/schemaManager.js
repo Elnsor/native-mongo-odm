@@ -49,7 +49,7 @@ class SchemaValidationManager {
 
     const reqd = items.validator.$jsonSchema.required || [];
     const prop = items.validator.$jsonSchema.properties || {};
-    const fieldNames = Object.getOwnPropertyNames(prop);
+    const fieldNames = Object.keys(prop);
 
     // 1. Pre-calculate which root keys have nested children (O(N) run ONCE)
     const parentKeysWithChildren = new Set();
@@ -92,7 +92,7 @@ class SchemaValidationManager {
         const baseSchema = applicationSchemaRegistry.getSchema(collectionName);
         const properties = baseSchema.getProperties();
         const required = baseSchema.getRequired();
-        const fieldNames = Object.getOwnPropertyNames(properties);
+        const fieldNames = Object.keys(properties);
 
         return {
             required: new Set(required),
@@ -561,12 +561,12 @@ async validateDocument(collectionName, doc, skipRequired = { "_id": true, "creat
         const schema = await this.getSchema(collectionName);
         const schemaBlueprint = schema.properties;
         const schemaRequired = schema.required;
-        const schemaBlueprintKeys = Object.getOwnPropertyNames(schemaBlueprint);
+        const schemaBlueprintKeys = Object.keys(schemaBlueprint);
         const validSchemaKeys = schema.validSchemaKeys || new Set(schemaBlueprintKeys);
 
         let sanitizerDoc = {};
         let newdoc=Object.create(null);
-        const docKeys = Object.getOwnPropertyNames(doc);
+        const docKeys = Object.keys(doc);
       
         const docSet=new Set();
 

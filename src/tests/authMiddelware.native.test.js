@@ -22,7 +22,7 @@ mock.module('../utils/jwtEngine.js', {
 });
 
 
-const { tokenauth } = await import('../middleware/authMeddlware.js');
+const { tokenauth,clearUserCache,getUserCacheStats } = await import('../middleware/authMeddlware.js');
 
 describe("Unit Test: tokenauth Middleware Security Layer", () => {
     let mockUserCollection;
@@ -70,8 +70,6 @@ describe("Unit Test: tokenauth Middleware Security Layer", () => {
     describe("Successfuly Authentication ", () => {
         test('should authenticate valid token and attach user to req', async () => {
             await tokenauth(req, res, next);
-
-            
             assert.equal(next.mock.calls.length, 1);
             assert.equal(next.mock.calls[0].arguments.length, 0);
 
@@ -116,10 +114,11 @@ describe("Unit Test: tokenauth Middleware Security Layer", () => {
         });
 
         test("should fail with status code 401 if the token is valid but the user no longer exists in DB", async () => {
+          
+            clearUserCache();
             mockUserCollection.findOne.mock.mockImplementationOnce(async () => null);
 
             await tokenauth(req, res, next);
-
             assert.equal(next.mock.calls.length, 1);
             assert.equal(next.mock.calls[0].arguments[0].statusCode, 401);
             assert.match(next.mock.calls[0].arguments[0].message, /no longer exist/i);
