@@ -5,7 +5,25 @@ import { ObjectId } from "mongodb/lib/bson.js";
 import { Projection } from "../framework/engines/projectionEngine.js";
 import { record, auditLog } from "../Monitor/monitoringSystem.js";
 import { DOMAIN, EVENT_TYPES, EVENT_MTYPES } from "../Monitor/constant/eventType.js";
+import { LRUCache } from "../utils/lruCache.js";
+import { resourceInstance } from "../rbac/buckets/systemReourcesInstances.js";
 
+const userCache=new LRUCache();
+/**
+ * 
+ * @param {string} key 
+ */
+export function InvalidateUserCache(key){
+  userCache.delete(key)
+}
+
+export function getUserCacheStats() {
+    return userCache.stats;
+}
+
+export function clearUserCache() {
+    return userCache.clear();
+}
 /**
  * 
  * @param {Request} req 
@@ -44,6 +62,9 @@ try{
 
   };
 
+   const cacheKey = String(payload.id);
+    let currentUser = userCache.get(cacheKey);
+
   const userCollection=await collectionManager.getCollection(`users`);
 
   if(!userCollection){
@@ -52,15 +73,21 @@ try{
     throw new AppError("Authentication System Error: users Collection is inactive state",500);
   }
 
-  const currentUser=await userCollection.findOne({_id: new ObjectId(payload.id)},{ projection : Projection.getProjection(`users`)});
+   console.log(cacheKey)    
+if(!currentUser){
 
-  if(!currentUser){
-
+     currentUser=await userCollection.findOne({_id: new ObjectId(payload.id)},{ projection : Projection.getProjection(`users`)});
+    
+     if(!currentUser){
      record(DOMAIN.AUTH_DOMAIN, EVENT_TYPES.AUTH_TOKEN_VERIFY_FAILED, EVENT_MTYPES.METRIC_C);
      auditLog(DOMAIN.AUTH_DOMAIN, 'auth_user_not_found', { ip: clientIp, userId: payload.id }, {}, 'failure');
      
     throw new AppError("Authentication Faild: the User belong to this active Token no longer exist!! ",401);
   }
+
+}
+
+    userCache.set(cacheKey, currentUser);
 
   const durationNs = (performance.now() - startTime) * 1000000;
         record(DOMAIN.AUTH_DOMAIN, EVENT_TYPES.AUTH_TOKEN_VERIFY_END, EVENT_MTYPES.METRIC_H, durationNs);
@@ -71,7 +98,8 @@ try{
             'success'
         );
 // user card
-
+        const roleId = resourceInstance.getRoleId(currentUser.accountInfo?.roleName);
+        currentUser.roleId = (typeof roleId === 'number') ? roleId : null;
 
   req.user=currentUser;
   next();
