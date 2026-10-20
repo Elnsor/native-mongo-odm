@@ -12,7 +12,7 @@ import { resourceInstance } from "../rbac/buckets/systemReourcesInstances.js";
  * @property {string} parentInsName - Parent resource instance name.
  * @property {string} childInsName - Child resource instance name.
  * @property {string} grandchildInsName - Grandchild resource instance name.
- * @property {string} [ownerFieldChecker='id'] - The name of the parameter holding owner checker.
+ * @property {string} [ownerFieldChecker='_id'] - The name of the parameter holding owner checker.
  */
 /**
  * Generic RBAC Authorization Middleware Factory
@@ -70,8 +70,8 @@ export const authorizeCheck = (action, options = {}) => {
             
             let resourceId = null;
           
-                const ownerFieldName = options.ownerFildChecker || 'id';
-                resourceId = req.params[ownerFieldName] || req.body[ownerFieldName] || null;
+                const ownerFieldName = options.ownerFieldChecker || '_id';
+                resourceId = req.params?.[ownerFieldName] || req.body?.[ownerFieldName] || null;
            
  
             // 6. Check Access via RBAC Manager (Highly optimized bitwise ops inside)

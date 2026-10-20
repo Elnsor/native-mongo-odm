@@ -22,7 +22,7 @@ app.use(express.urlencoded({extended:true,limit:'100mb'}));
 // attach requestId for tracing 
 app.use((req,res,next)=>{
     req.requestId =req.headers['x-request-id'] || crypto.randomUUID()
-     console.log(req.requestId);
+    
     res.setHeader('X-Request-Id',req.requestId)
    
     next();

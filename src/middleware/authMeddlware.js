@@ -73,7 +73,7 @@ try{
     throw new AppError("Authentication System Error: users Collection is inactive state",500);
   }
 
-   console.log(cacheKey)    
+     
 if(!currentUser){
 
      currentUser=await userCollection.findOne({_id: new ObjectId(payload.id)},{ projection : Projection.getProjection(`users`)});
@@ -102,6 +102,7 @@ if(!currentUser){
         currentUser.roleId = (typeof roleId === 'number') ? roleId : null;
 
   req.user=currentUser;
+  
   next();
 
 }catch(error){
